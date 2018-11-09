@@ -307,3 +307,242 @@ class NetworkBase(object):
         net_output = self.network_build(self.input_ph)
 
         return net_output, self.input_ph, self.train_flag_ph
+
+    '''
+    ***********
+    EXPERIMENTAL MEMLESS FUNCTIONS
+    ***********
+    '''
+    def get_memless_gen_layer(self, x, num_units, name, special_nonlinearity):
+        num_input_units = int(x.shape[-1])
+        layer_w = self.get_memless_var(name + "_lw", [num_input_units, num_units])
+        layer_b = self.get_memless_var(name + "_lb", [num_units], zero_init=True)
+        layer_out = tf.nn.bias_add(tf.matmul(x, layer_w, name=name + "_matmul"), layer_b, name=name + "_bias_add")
+
+        if special_nonlinearity is False:
+            # layer_out = tf.nn.leaky_relu(layer_out, (1.0 / (2 ** 10)), name=name + "_leakyrelu")
+            # layer_out = tf.nn.sigmoid(layer_out)
+            layer_out = tf.nn.selu(layer_out)
+            # layer_out = self.sqrtsin_nonlinearity(pre_activ)
+        else:
+            # layer_out = tf.sin(59*layer_out)
+            # for prime in reversed([41, 37, 31]): #41 37
+            #    layer_out = tf.sin(prime * layer_out) + layer_out
+            layer_out = tf.sin(3 * layer_out)
+            for prime in reversed([7, 13, 2]):  # 41 37
+                layer_out = tf.sin(prime * layer_out) + layer_out
+
+            # layer_out = tf.nn.relu(layer_out, name=name + "_relu")
+            # layer_out = self.sqrtsin_nonlinearity(layer_out)
+            # layer_out = pre_activ
+
+        return layer_out
+
+    def sqrtsin_nonlinearity(self, x):
+        r = tf.sqrt(-2.0 * tf.log(x))
+        sigma = 2.0 * math.pi * x
+        nonlinear = r * tf.cos(sigma)
+        return nonlinear
+
+    def test_nonlinearity(self, x):
+        x = x * tf.sin(x) + x
+        return x
+
+    def log_kernel(self, kernel):
+
+        with tf.device("/cpu:0"):
+            num_positives = tf.count_nonzero(tf.greater_equal(kernel, 0.))
+            num_negatives = tf.size(kernel) - tf.to_int32(num_positives)
+            kernel = tf.Print(kernel, [num_positives], "num_positives:", first_n=-1, summarize=128)
+            kernel = tf.Print(kernel, [num_negatives], "num_negatives:", first_n=-1, summarize=128)
+            kernel = tf.Print(kernel, [kernel[:, :, 0, 0]], "Kernel[:,:,0,0]: ", first_n=-1, summarize=128)
+            kernel = tf.Print(kernel, [kernel[:, :, 0, 1]], "Kernel[:,:,0,1]: ", first_n=-1, summarize=128)
+
+            kernel = tf.Print(kernel, [kernel[:, :, 1, 0]], "Kernel[:,:,1,0]: ", first_n=-1, summarize=128)
+            kernel = tf.Print(kernel, [kernel[:, :, 1, 1]], "Kernel[:,:,1,1]: ", first_n=-1, summarize=128)
+
+        return kernel
+
+    def mult_add(self, x, mult, add, name):
+        ret = tf.nn.bias_add(tf.matmul(x, mult, name=name + "_matmul"), add, name=name + "_bias")
+        return ret
+
+    def mult_add_leaky(self, x, mult, add, leak, name):
+        matmult = self.mult_add(x, mult, add, name)
+        ret = tf.nn.leaky_relu(matmult, leak, name=name + "_nl")
+        return ret
+
+    def check_var(self, var):
+        with tf.device("/cpu:0"):
+            var = tf.Print(var, [var], "check var", first_n=1, summarize=128)
+        return var
+
+    def get_memless_kernel(self, kernel_shape, name):
+
+        start = time.time()
+        global_start = start
+        name_und = name + "_"
+        scope_name = name_und + "memless_network"
+        seed_num_units = 128
+        expansion_num_units = 128
+        extraction_num_units = 128
+
+        leaky_coeff = 0.125
+        num_expans_steps = 16
+
+        num_out_ch = kernel_shape[3]
+        shape_out_first = [kernel_shape[3], kernel_shape[0], kernel_shape[1], kernel_shape[2]]
+        num_weight_per_out_ch = kernel_shape[0] * kernel_shape[1] * kernel_shape[2]
+        num_extract_steps = int(math.ceil(kernel_shape[0] * kernel_shape[1] * kernel_shape[2] / extraction_num_units))
+
+        log.info("num_expans_steps: {}".format(num_expans_steps))
+        log.info("Num extract steps: {}".format(num_expans_steps))
+
+        with tf.name_scope(scope_name) and tf.variable_scope(scope_name):
+            # Seeds specific for each out ch
+            seeds = self.get_memless_var(name=name_und + "seeds", shape=[num_out_ch, seed_num_units], random_uniform=True)
+
+            # cast the seeds into a higher dim space before espansion
+            dim_m = self.get_memless_var(name=name_und + "dim_m", shape=[seed_num_units, expansion_num_units])
+            dim_b = self.get_memless_var(name=name_und + "dim_b", shape=[expansion_num_units], zero_init=True)
+            high_dim = self.mult_add_leaky(seeds, dim_m, dim_b, leaky_coeff, name_und + "high_dim")
+
+            # expans stage. A single variable is used multiple times to expand the data
+            expans_m = self.get_memless_var(name=name_und + "expans_m", shape=[expansion_num_units, expansion_num_units])
+            expans_b = self.get_memless_var(name=name_und + "expans_b", shape=[expansion_num_units], zero_init=True)
+            expanded_data = high_dim
+
+            for expans_step in range(num_expans_steps):
+                basename = name_und + "expans_{}_".format(expans_step)
+                if int((expans_step % 2)) == 0:
+                    expanded_data = self.mult_add_leaky(expanded_data, expans_m, expans_b, leaky_coeff, basename) + high_dim
+                else:
+                    expanded_data = self.mult_add_leaky(expanded_data, expans_m, expans_b, leaky_coeff, basename)
+
+            # Post expansion steps, cast to extraction dimensions
+            post_exp_m = self.get_memless_var(name=name_und + "post_exp_m", shape=[expansion_num_units, extraction_num_units])
+            post_exp_b = self.get_memless_var(name=name_und + "post_exp_b", shape=[extraction_num_units], zero_init=True)
+            post_exp_data = self.mult_add_leaky(expanded_data, post_exp_m, post_exp_b, leaky_coeff, name_und + "post_exp")
+
+            # extract stage. Here we need to get the actual weights. The input is of shape [num_out_ch, dim_num_units]
+            extraction_m = self.get_memless_var(name=name_und + "extraction_m", shape=[extraction_num_units, extraction_num_units])
+            extraction_b = self.get_memless_var(name=name_und + "extraction_b", shape=[extraction_num_units], zero_init=True)
+
+            final_process_m = self.get_memless_var(name=name_und + "final_process_m", shape=[extraction_num_units, extraction_num_units])
+            final_process_b = self.get_memless_var(name=name_und + "final_process_b", shape=[extraction_num_units], zero_init=True)
+
+            extracted_data = 0.0
+
+            final_data_list = list()
+            for extract_step in range(num_extract_steps):
+                extract_basename = name_und + "extract_{}_".format(extract_step)
+                final_basename = name_und + "final_{}_".format(extract_step)
+
+                extracted_data = extracted_data + post_exp_data
+                extracted_data = self.mult_add_leaky(extracted_data, extraction_m, extraction_b, leaky_coeff, extract_basename)
+                # Result appended before non linearity
+                final_data = self.mult_add(extracted_data, final_process_m, final_process_b, final_basename)
+
+                final_data_list.append(final_data)
+
+            concat_weights = tf.concat(final_data_list, axis=1)
+            # print(concat_weights.shape)
+            cut_unused = tf.slice(concat_weights, begin=[0, 0], size=[num_out_ch, num_weight_per_out_ch])
+            rescale_m = self.get_memless_var(name=name_und + "rescale_m", shape=[1], value_init=1.0)
+            rescale_b = self.get_memless_var(name=name_und + "rescale_b", shape=[1], zero_init=True)
+            cut_unused = cut_unused * rescale_m + rescale_b
+
+            # print(cut_unused.shape)
+            reshaped_out_first = tf.reshape(cut_unused, shape_out_first)
+            kernel = tf.transpose(reshaped_out_first, [1, 2, 3, 0])
+
+            kernel = self.log_kernel(kernel)
+
+        # sanity check on shape
+        for shape_index in range(4):
+            assert (int(kernel.shape[shape_index]) == kernel_shape[shape_index])
+
+        # LOGs
+        all_variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=scope_name)
+
+        num_variables = 0
+        for var in all_variables:
+            var_shape = var.shape
+            var_shape_list = [var_shape[i].value for i in range(len(var_shape))]
+            num_var = reduce(operator.mul, var_shape_list, 1)
+            num_variables = num_variables + num_var
+
+        original_num_weights = reduce(operator.mul, kernel_shape, 1)
+        compr_ratio = 100.0 * num_variables / original_num_weights
+        timelapse = time.time() - global_start
+        log.info("Created kernel {} ({}). Num effective variables: {} ({:2f}%) ({:2f}s)".format(name, kernel.shape, num_variables, compr_ratio,
+                                                                                                timelapse))
+        return kernel
+
+    def get_memless_var(self, name, shape, zero_init=False, random_uniform=False, normal_init=False, value_init=None):
+        var_name = name + "_memless"
+        regularizer = None
+        # regularizer = tf.contrib.layers.l2_regularizer(1.0)
+        # regularizer = tf.contrib.layers.l1_regularizer(1.0)
+        # regularizer = tf.contrib.layers.l1_l2_regularizer(0.1,0.1)
+
+        if zero_init is True:
+            initializer = tf.zeros_initializer()
+        elif random_uniform is True:
+            initializer = tf.initializers.random_uniform(minval=-1, maxval=1)
+        elif normal_init is True:
+            initializer = tf.initializers.random_normal()
+        elif value_init is not None:
+            initializer = value_init
+            shape = None
+        else:
+            initializer = tf.contrib.layers.xavier_initializer()
+            # initializer = tf.zeros_initializer()
+            # initializer = tf.initializers.random_normal()
+
+        var = tf.get_variable(
+            name=var_name,
+            shape=shape,
+            dtype=tf.float32,
+            initializer=initializer,
+            regularizer=regularizer,
+            trainable=True,  ###TODO
+            validate_shape=True,
+        )
+
+        with tf.device("/cpu:0"):
+            var = tf.Print(var, [var], var_name, first_n=1, summarize=36)
+        return var
+
+    def get_memless_conv(self, x, out_ch, kernel, name, add_biases=False):
+        kernel_shape = list(kernel) + [int(x.shape[3]), out_ch]
+        kernels = self.get_memless_kernel(kernel_shape, name)
+
+        x = tf.nn.conv2d(
+            input=x,
+            filter=kernels,
+            strides=[1, 1, 1, 1],
+            padding="SAME",
+            use_cudnn_on_gpu=True,
+            data_format='NHWC',
+            dilations=[1, 1, 1, 1],
+            name=name
+        )
+
+
+        if add_biases:  # todo param shape
+            biases = tf.Variable(-5 * np.ones(shape=(out_ch,)), dtype=tf.float32)
+            biases = self.quantize_variable(biases, (out_ch,), width=16)
+            x = tf.nn.bias_add(x, biases)
+
+        return x
+
+    def conv_layer_bn_before_relu_memless(self, x, out_ch, kernel, activation_func, name):
+        x = self.get_memless_conv(x, out_ch, kernel, name)
+
+        x = tf.layers.batch_normalization(inputs=x, training=self.train_flag_ph, momentum=0.99, epsilon=0.001, center=True,
+                                          scale=True, name=name + '_bn')
+
+        x = activation_func(x)
+
+        return x

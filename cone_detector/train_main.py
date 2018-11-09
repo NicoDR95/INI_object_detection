@@ -20,7 +20,8 @@ log = logging.getLogger()
 
 # ~~~~~~~~~ Directories for training ~~~~~~~~~
 run_name = 'TinyYoloBugFix'
-run_index = 1
+run_index = 2
+
 ws_root = "/home/asa/workspaces/Pycharm/yolo/"
 data_root = ws_root + "dataset/cones_dataset2018/"
 images_dir = data_root + 'full_set_images/'
@@ -36,8 +37,6 @@ all_images_dir = [images_dir, aug_images_dir]
 checkpoint_number = '55'
 saved_model_name = run_name
 checkpoint = saved_model_dir + saved_model_name + '-' + checkpoint_number
-# checkpoint = saved_model_dir + 'checkpoint' + '-' + checkpoint_number
-# checkpoint = saved_model_dir + 'latest'
 metagraph = checkpoint + '.meta'
 
 # ~~~~~~~~~ Directories for validation ~~~~~~~~~
@@ -91,7 +90,7 @@ visualize_fourth_channel = False            # Use this to visualize if the resul
 input_depth = 3
 output_h = 8
 output_w = 16
-batch_size = 1
+batch_size = 16
 n_epochs = 10000
 scale_coor = 4.0
 scale_noob = 2.0

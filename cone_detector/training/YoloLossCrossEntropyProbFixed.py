@@ -93,7 +93,7 @@ class YoloLossCrossEntropyProb(object):
             intersect_area = intersect_wh[:, :, :, :, 0] * intersect_wh[:, :, :, :, 1]
 
             iou = pred_box_conf_sig * tf.truediv(intersect_area, true_box_area_grid + pred_box_area_grid - intersect_area)
-            #iou = tf.truediv(intersect_area, true_box_area_grid + pred_box_area_grid - intersect_area)
+
             best_box = tf.equal(iou, tf.reduce_max(iou, [3], True))
             best_box = tf.to_float(best_box)
             best_box_true_values = best_box * true_values[:, :, :, :, 4]  # multiply by confidence
@@ -107,7 +107,7 @@ class YoloLossCrossEntropyProb(object):
             sfmce = best_box_true_values * tf.nn.softmax_cross_entropy_with_logits_v2(labels=true_box_prob, logits=pred_box_prob, dim=4)
 
             xy_loss_matrix = true_box_conf * tf.pow(pred_box_xy_rel - true_box_xy_rel, 2)
-            wh_loss_matrix = true_box_conf * tf.pow(pred_box_wh_oneb_sqrt - true_box_wh_oneb_sqrt, 2)
+            wh_loss_matrix = self.parameters.scale_coor * true_box_conf * tf.pow(pred_box_wh_oneb_sqrt - true_box_wh_oneb_sqrt, 2)
 
             conf_diff_pow = tf.pow(pred_box_conf - true_box_conf, 2)
             conf_diff_pow_times_conf = true_box_conf * conf_diff_pow
@@ -118,18 +118,22 @@ class YoloLossCrossEntropyProb(object):
             xy_loss = self.parameters.scale_coor * self.flatten_and_reduce_sum(xy_loss_matrix)
             wh_loss = self.parameters.scale_coor * self.flatten_and_reduce_sum(wh_loss_matrix)
 
-            conf_ob_loss = self.parameters.scale_conf * self.flatten_and_reduce_sum(conf_loss_obj)
-            conf_noob_loss = self.parameters.scale_noob * self.flatten_and_reduce_sum(conf_loss_noobj)
+            conf_ob_loss = self.parameters.scale_noob * self.flatten_and_reduce_sum(conf_loss_noobj)
+            conf_noob_loss = self.parameters.scale_conf * self.flatten_and_reduce_sum(conf_loss_obj)
 
             sfmce_loss = self.parameters.scale_proob * self.flatten_and_reduce_sum(sfmce)
 
-            exp_cap_loss = self.flatten_and_reduce_sum(tf.nn.relu(net_output[:, :, :, :, 2:4] - exp_cap))
+            exp_cap_loss = (self.parameters.scale_coor + self.parameters.scale_noob + self.parameters.scale_conf + self.parameters.scale_proob) \
+                           * self.flatten_and_reduce_sum(tf.nn.relu(net_output[:, :, :, :, 2:4] - exp_cap))
+
+
+
 
             yolo_loss = xy_loss + wh_loss + conf_ob_loss + conf_noob_loss + sfmce_loss + exp_cap_loss
 
-            # reg_loss = tf.losses.get_regularization_loss()
-            # log.info("Regularizer loss found: {}".format(reg_loss))
-            loss = .5 * tf.reduce_mean(yolo_loss)  # + reg_loss
+            reg_loss = tf.losses.get_regularization_loss()
+            log.info("Regularizer loss found: {}".format(reg_loss))
+            loss = .5 * tf.reduce_mean(yolo_loss) + reg_loss
 
             # log.info must be on the cpu
             # with tf.device("/cpu:0"):
@@ -144,6 +148,5 @@ class YoloLossCrossEntropyProb(object):
     def flatten_and_reduce_sum(self, tensor):
         shape = tensor.get_shape().as_list()  # a list: [None, 9, 2]
         dim = np.prod(shape[1:])  # dim = prod(9,2) = 18
-
         reshaped = tf.reshape(tensor, [-1, dim])  # -1 means "all
         return tf.reduce_sum(reshaped, axis=1)

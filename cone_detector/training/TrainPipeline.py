@@ -73,6 +73,13 @@ class TrainPipeline(object):
                 log.info("Saving the models in 3 seconds...")
                 log.info("Press ctrl+C again to abort")
                 time.sleep(3)
+
+                try:
+                    log.info("Evaluating results...")
+                    self.accuracy.run_and_get_accuracy(train_sess=self.sess, step=self.global_step)
+                except:
+                    log.error("**********************Exception during get accuracy******************")
+
                 log.info("Saving the model...")
 
                 if not os.path.exists(self.parameters.saved_model_dir):
