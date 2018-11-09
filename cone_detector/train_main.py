@@ -6,7 +6,7 @@ from accuracy.Accuracy import Accuracy
 from datahandling.BatchGenerator import BatchGenerator
 from datahandling.DataPreprocessing import DataPreprocessing
 from datahandling.Dataset import Dataset
-from networks.TinyYoloOnProteins import TinyYoloOnProteins
+
 from predict.Predict import Predict
 from training.Optimizer import Optimizer
 from training.YoloLossCrossEntropyProb import YoloLossCrossEntropyProb
@@ -15,11 +15,15 @@ from datahandling.DataAugmentation import DataAugmentation
 from utility.CalculateAnchors import CalculateAnchors
 from utility.DatasetTFRecordsConverter import TFRecordsConverter
 
+from networks.TinyYoloOnProteins import TinyYoloOnProteins
+from networks.MemlessNet import MemlessNet
+
+
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger()
 
 # ~~~~~~~~~ Directories for training ~~~~~~~~~
-run_name = 'TinyYoloBugFix'
+run_name = 'MemlessNet'
 run_index = 2
 
 ws_root = "/home/asa/workspaces/Pycharm/yolo/"
@@ -100,7 +104,7 @@ data_preprocessing_normalize = 255.0
 tf_device = "/gpu:0"
 debug = True
 print_sel_p=False
-learning_rate = 10 ** (-5)
+learning_rate = 10 ** (-6)
 dropout = [0.0]
 
 # ~~~~~~~~~ Inference and accuracy settings ~~~~~~~~~
@@ -165,7 +169,7 @@ max_iter = 1000                 # Maximum number of iterations of the k-means al
 # ~~~~~~~~~ Class settings ~~~~~~~~~
 parameters_type = Parameters
 dataset_parser_type = Dataset
-network_type = TinyYoloOnProteins
+network_type = MemlessNet
 data_preprocessor_type = DataPreprocessing
 batch_generator_type = BatchGenerator
 loss_type = YoloLossCrossEntropyProb

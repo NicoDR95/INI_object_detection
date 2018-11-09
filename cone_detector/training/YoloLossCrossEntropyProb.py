@@ -127,15 +127,15 @@ class YoloLossCrossEntropyProb(object):
 
             yolo_loss = xy_loss + wh_loss + conf_ob_loss + conf_noob_loss + sfmce_loss + exp_cap_loss
 
-            # reg_loss = tf.losses.get_regularization_loss()
-            # log.info("Regularizer loss found: {}".format(reg_loss))
-            loss = .5 * tf.reduce_mean(yolo_loss)  # + reg_loss
+            reg_loss = tf.losses.get_regularization_loss()
+
+            loss = .5 * tf.reduce_mean(yolo_loss) + tf.reduce_sum(reg_loss)
 
             # log.info must be on the cpu
             # with tf.device("/cpu:0"):
             # loss = tf.Print(loss, [loss, xy_loss, wh_loss, conf_ob_loss, conf_noob_loss, sfmce_loss, exp_cap_loss], message='Losses')
             # loss = tf.Print(loss, [loss], message='Loss: ')
-
+            log.info("Regularizer losses: {}".format(reg_loss))
             log.info("True_values shape is: {}".format(true_values.shape))
             log.info("Net_output shape: {}".format(net_output.shape))
 
