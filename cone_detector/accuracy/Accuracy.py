@@ -15,7 +15,7 @@ class Accuracy(object):
         self.preprocessor = preprocessor
         self.visualize = visualize
 
-    def run_and_get_accuracy(self, train_sess=None, step=None):
+    def run_and_get_accuracy(self, train_sess=None, step=None, epoch_finished=True):
         validation_images_dir = self.parameters.validation_images_dir
         validation_annotations_dir = self.parameters.validation_annotations_dir
         thr = self.parameters.threshold
@@ -181,7 +181,7 @@ class Accuracy(object):
         log.info("The overall recall is:    {}".format(overall_recall))
         log.info("The overall F1 score is:  {}".format(overall_F1_score))
 
-        if training is True:
+        if training is True and epoch_finished is True:
             summary_writer = tf.summary.FileWriter(self.parameters.tensorboard_dir)
             summary = tf.Summary()
             summary.value.add(tag='mean_precision', simple_value=mean_precision)
@@ -190,6 +190,8 @@ class Accuracy(object):
             summary.value.add(tag='overall_precision', simple_value=overall_precision)
             summary.value.add(tag='overall_recall', simple_value=overall_recall)
             summary.value.add(tag='overall_F1_score', simple_value=overall_F1_score)
+            summary.value.add(tag='Batch_size_VS_epochs', simple_value=self.parameters.batch_size)
+
             summary_writer.add_summary(summary, step)
             summary_writer.flush()
 

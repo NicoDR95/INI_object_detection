@@ -28,20 +28,29 @@ class TrainPipeline(object):
 
     def train(self):
         if self.training_data_prepared is False:
-            self.all_datasets_dict = self.prepare_training()
+            self.all_datasets_dict, self.global_step, self.epoch_step = self.prepare_training()
 
         if self.network_loss_linked is False:
             self.link_network_loss()
 
         if self.tf_runned is False:
-            self.global_step, self.merged_summary_op, self.summary_writer, self.sess, self.saver = self.get_tf_run()
+            self.merged_summary_op, self.summary_writer, self.sess, self.saver = self.get_tf_run()
 
         n_images = len(self.all_datasets_dict)
+
+        increment_op = tf.assign_add(self.epoch_step, 1, name='increment_epoch_step')
 
         op_to_run = [self.optimizer, self.merged_summary_op, self.loss_tf]
 
         for epoch in range(self.parameters.n_epochs):
-            self.global_step += 1
+            try:
+                if 'mid_epoch' not in tf.train.latest_checkpoint(self.parameters.saved_model_dir):
+                    epoch_n = self.sess.run(increment_op)
+                else:
+                    epoch_n = self.sess.run(self.epoch_step)
+            except TypeError:
+                epoch_n = self.sess.run(increment_op)
+
             batches = self.batch_generator.get_generator(dataset=self.all_datasets_dict,
                                                          preprocessor=self.data_preprocessing,
                                                          visualizer=self.visualizer)
@@ -58,8 +67,8 @@ class TrainPipeline(object):
                     if loss > self.parameters.loss_filename_print_threshold or math.isnan(loss):
                         log.warn("Following images gave loss higher than threshold: {}".format(filenames))
 
-                    step_idx = self.global_step * int(ceil((n_images / self.parameters.batch_size))) + batch_iter_counter
-                    self.summary_writer.add_summary(summary, step_idx)
+                    # step_idx = self.epoch_step * int(ceil((n_images / self.parameters.batch_size)))+batch_iter_counter
+                    self.summary_writer.add_summary(summary, self.sess.run(self.global_step))
 
                     # self.summary_writer.flush()
                     batch_end_t = time.time()
@@ -76,7 +85,7 @@ class TrainPipeline(object):
 
                 try:
                     log.info("Evaluating results...")
-                    self.accuracy.run_and_get_accuracy(train_sess=self.sess, step=self.global_step)
+                    self.accuracy.run_and_get_accuracy(train_sess=self.sess, step=epoch_n, epoch_finished=False)
                 except:
                     log.error("**********************Exception during get accuracy******************")
 
@@ -86,33 +95,39 @@ class TrainPipeline(object):
                     log.info("Creating save model dir {}".format(self.parameters.saved_model_dir))
                     os.makedirs(self.parameters.saved_model_dir)
 
-                self.saver.save(self.sess,
-                                os.path.join(self.parameters.saved_model_dir, self.parameters.saved_model_name + '-mid_epoch'),
-                                global_step=self.global_step - 1)
+                # self.summary_writer.flush()
+                with tf.control_dependencies(self.summary_writer.flush()):
+                    self.saver.save(self.sess,
+                                    os.path.join(self.parameters.saved_model_dir,
+                                                 self.parameters.saved_model_name + '-mid_epoch'),
+                                    global_step=epoch_n)
                 exit("Model saved")
-
             epoch_end_t = time.time()
-            log.info("######################### Epoch {} completed #############################".format(self.global_step))
+            log.info("######################### Epoch {} completed #############################".format(epoch_n))
             log.info("Epoch time: {:2f}".format(epoch_end_t - epoch_start_t))
-
-            log.info("######################### Epoch {} completed #############################".format(self.global_step))
             log.info("Saving the model...")
 
             if not os.path.exists(self.parameters.saved_model_dir):
                 log.info("Creating save model dir {}".format(self.parameters.saved_model_dir))
                 os.makedirs(self.parameters.saved_model_dir)
-
-            self.saver.save(self.sess, os.path.join(self.parameters.saved_model_dir, self.parameters.saved_model_name), global_step=self.global_step)
+            # self.summary_writer.flush()
+            with tf.control_dependencies(self.summary_writer.flush()):
+                self.saver.save(self.sess, os.path.join(self.parameters.saved_model_dir, self.parameters.saved_model_name),
+                                global_step=epoch_n)
 
             try:
                 log.info("Evaluating results...")
-                self.accuracy.run_and_get_accuracy(train_sess=self.sess, step=self.global_step)
+                self.accuracy.run_and_get_accuracy(train_sess=self.sess, step=epoch_n)
             except:
                 log.error("**********************Exception during get accuracy******************")
 
         log.info("Requested epochs done - training completed")
 
     def prepare_training(self):
+        with tf.device("/cpu:0"):
+            with tf.name_scope(name='training_steps'):
+                global_step = tf.Variable(0, name='global_step', trainable=False)
+                epoch_step = tf.Variable(0, name='epoch_step', trainable=False)
         annotations_dir = self.parameters.annotations_dir
         # self.dataset is a list of datasets, we'll iterate on them and put them is single list of dictionaries
         all_dataset_dict = list()
@@ -126,7 +141,7 @@ class TrainPipeline(object):
         # preprocessed_data = self.data_preprocessing.get_preprocessed_data(all_dataset_dict)
         self.training_data_prepared = True
 
-        return all_dataset_dict
+        return all_dataset_dict, global_step, epoch_step
 
     def link_network_loss(self):
 
@@ -135,12 +150,12 @@ class TrainPipeline(object):
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 
         with tf.control_dependencies(update_ops):
-            self.optimizer = self.optimizer_object.get_optimizer().minimize(self.loss_tf)
+            self.optimizer = self.optimizer_object.get_optimizer().minimize(self.loss_tf, global_step=self.global_step)
 
         self.network_loss_linked = True
         log.info('link_network_loss completed')
 
-    def get_global_step(self):
+    def get_epoch_step(self):
         step = tf.train.latest_checkpoint(self.parameters.saved_model_dir)
         if step is not None:
             step = int(step[-1])
@@ -156,7 +171,8 @@ class TrainPipeline(object):
 
     def get_tf_run(self):
 
-        global_step = self.get_global_step()
+        # epoch_step = self.get_epoch_step()
+
         sess = tf.Session()
         sess.run(tf.global_variables_initializer())
 
@@ -174,4 +190,4 @@ class TrainPipeline(object):
 
         self.tf_runned = True
 
-        return global_step, merged_summary_op, summary_writer, sess, saver
+        return merged_summary_op, summary_writer, sess, saver
