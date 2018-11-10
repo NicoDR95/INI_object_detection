@@ -133,7 +133,8 @@ class TrainPipeline(object):
         all_dataset_dict = list()
         for reader in self.dataset:
             new_annotation = reader.get_dataset_dict()
-            all_dataset_dict.extend(new_annotation)
+            if new_annotation is not None:
+                all_dataset_dict.extend(new_annotation)
 
         # TODO, pass the augmented data as a second dataset calculated offline
         # augmented_data = self.data_augmentation.get_augemnted_data(all_dataset_dict)
