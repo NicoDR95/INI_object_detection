@@ -1,7 +1,6 @@
 import logging
 import math
 import time
-from math import ceil
 
 import os
 import tensorflow as tf
@@ -74,9 +73,11 @@ class TrainPipeline(object):
                     batch_end_t = time.time()
                     batch_time = batch_end_t - batch_start_t
                     img_s = self.parameters.batch_size / batch_time
-                    percent_batches_done = 100*batch_iter_counter/ self.batch_generator.num_batches
-                    log.info("Batch {} ({:.2f}%) - time: {:.2f} ({:.2f} img/s) - loss {:.5f}".format(batch_iter_counter, percent_batches_done,
-                                                                                                      batch_time, img_s, loss))
+                    percent_batches_done = 100 * batch_iter_counter / self.batch_generator.num_batches
+                    log.info("Epoch {} - Batch {}/{} ({:.2f}%) - time: {:.2f} ({:.2f} img/s) - loss {:.5f}".format(epoch_n, batch_iter_counter+1,
+                                                                                                                   self.batch_generator.num_batches,
+                                                                                                                   percent_batches_done,
+                                                                                                                   batch_time, img_s, loss))
 
 
             except KeyboardInterrupt:
