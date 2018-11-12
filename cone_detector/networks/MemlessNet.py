@@ -37,12 +37,11 @@ class MemlessNet(NetworkBase):
             x = self.conv_layer_bn_before_relu_memless(x, 512, (3, 3), self.activation, 'conv6')
             x = self.maxpool_layer(x, (2, 2), (2, 2), 'pool5')
 
-            x = self.conv_layer_bn_before_relu(x, 1024, (3, 3), self.activation, 'conv7')
+            x = self.conv_layer_bn_before_relu_memless(x, 1024, (3, 3), self.activation, 'conv7')
 
-            x = self.conv_layer_bn_before_relu(x, 1024, (3, 3), self.activation, 'conv8')
+            x = self.conv_layer_bn_before_relu_memless(x, 1024, (3, 3), self.activation, 'conv8')
 
         # Last layer without batch normalization and with linear activation
-
         x = self.detector_layer(x)
         x = self.reshape_output_layer(x)
 

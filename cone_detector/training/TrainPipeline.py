@@ -74,7 +74,9 @@ class TrainPipeline(object):
                     batch_end_t = time.time()
                     batch_time = batch_end_t - batch_start_t
                     img_s = self.parameters.batch_size / batch_time
-                    log.info("Batch time: {:2f} ({:3f} img/s) - loss {:5f}".format(batch_time, img_s, loss))
+                    percent_batches_done = 100*batch_iter_counter/ self.batch_generator.num_batches
+                    log.info("Batch {} ({:.2f}%) - time: {:.2f} ({:.2f} img/s) - loss {:.5f}".format(batch_iter_counter, percent_batches_done,
+                                                                                                      batch_time, img_s, loss))
 
 
             except KeyboardInterrupt:
@@ -104,7 +106,7 @@ class TrainPipeline(object):
                 exit("Model saved")
             epoch_end_t = time.time()
             log.info("######################### Epoch {} completed #############################".format(epoch_n))
-            log.info("Epoch time: {:2f}".format(epoch_end_t - epoch_start_t))
+            log.info("Epoch time: {:.2f}".format(epoch_end_t - epoch_start_t))
             log.info("Saving the model...")
 
             if not os.path.exists(self.parameters.saved_model_dir):

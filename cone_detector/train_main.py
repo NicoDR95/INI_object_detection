@@ -24,7 +24,7 @@ log = logging.getLogger()
 
 # ~~~~~~~~~ Directories for training ~~~~~~~~~
 run_name = 'MemlessNet'
-run_index = 2
+run_index = 1
 
 ws_root = "/home/asa/workspaces/Pycharm/yolo/"
 data_root = ws_root + "dataset/cones_dataset2018/"
@@ -104,7 +104,7 @@ data_preprocessing_normalize = 255.0
 tf_device = "/gpu:0"
 debug = True
 print_sel_p=False
-learning_rate = 10 ** (-6)
+learning_rate = 10 ** (-5)
 dropout = [0.0]
 
 # ~~~~~~~~~ Inference and accuracy settings ~~~~~~~~~

@@ -4,13 +4,18 @@ import numpy as np
 from visualization.Visualization import Visualization
 import logging
 log = logging.getLogger()
+import math
 class BatchGenerator(object):
     def __init__(self, parameters):
         self.parameters = parameters
+        self.num_batches = None
 
     def get_generator(self, dataset, preprocessor, visualizer):
 
         n_images = len(dataset)
+
+        self.num_batches = math.ceil(n_images / self.parameters.batch_size)
+
         shuffled_indices = np.random.permutation(np.arange(n_images))
         l_bound = 0
         r_bound = min(self.parameters.batch_size, n_images)
@@ -44,7 +49,7 @@ class BatchGenerator(object):
 
                 image, objects, filename = preprocessor.preprocess_for_training(dataset[index])
                 filenames_batch[batch_image_idx] = filename
-                
+
                 if visualize_preprocessed_images is True:
                     log.info("The visualized image is the output of the preprocessing, input of the loss")
                     visualizer.visualize_images_after_preprocessing(image=image, image_objects=objects)

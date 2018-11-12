@@ -313,6 +313,7 @@ class NetworkBase(object):
     EXPERIMENTAL MEMLESS FUNCTIONS
     ***********
     '''
+
     def get_memless_gen_layer(self, x, num_units, name, special_nonlinearity):
         num_input_units = int(x.shape[-1])
         layer_w = self.get_memless_var(name + "_lw", [num_input_units, num_units])
@@ -384,10 +385,10 @@ class NetworkBase(object):
         name_und = name + "_"
         scope_name = name_und + "memless_network"
         seed_num_units = 128
-        expansion_num_units = 128
+        expansion_num_units = 32
         extraction_num_units = 128
 
-        leaky_coeff = 0.125
+        leaky_coeff = 1.0 / 256.0
         num_expans_steps = 16
 
         num_out_ch = kernel_shape[3]
@@ -402,7 +403,7 @@ class NetworkBase(object):
             # Seeds specific for each out ch
             seeds = self.get_memless_var(name=name_und + "seeds", shape=[num_out_ch, seed_num_units], random_uniform=True)
 
-            # cast the seeds into a higher dim space before espansion
+            '''# cast the seeds into a higher dim space before espansion
             dim_m = self.get_memless_var(name=name_und + "dim_m", shape=[seed_num_units, expansion_num_units])
             dim_b = self.get_memless_var(name=name_und + "dim_b", shape=[expansion_num_units], zero_init=True)
             high_dim = self.mult_add_leaky(seeds, dim_m, dim_b, leaky_coeff, name_und + "high_dim")
@@ -423,7 +424,7 @@ class NetworkBase(object):
             post_exp_m = self.get_memless_var(name=name_und + "post_exp_m", shape=[expansion_num_units, extraction_num_units])
             post_exp_b = self.get_memless_var(name=name_und + "post_exp_b", shape=[extraction_num_units], zero_init=True)
             post_exp_data = self.mult_add_leaky(expanded_data, post_exp_m, post_exp_b, leaky_coeff, name_und + "post_exp")
-
+            '''
             # extract stage. Here we need to get the actual weights. The input is of shape [num_out_ch, dim_num_units]
             extraction_m = self.get_memless_var(name=name_und + "extraction_m", shape=[extraction_num_units, extraction_num_units])
             extraction_b = self.get_memless_var(name=name_und + "extraction_b", shape=[extraction_num_units], zero_init=True)
@@ -438,7 +439,7 @@ class NetworkBase(object):
                 extract_basename = name_und + "extract_{}_".format(extract_step)
                 final_basename = name_und + "final_{}_".format(extract_step)
 
-                extracted_data = extracted_data + post_exp_data
+                extracted_data = extracted_data + seeds
                 extracted_data = self.mult_add_leaky(extracted_data, extraction_m, extraction_b, leaky_coeff, extract_basename)
                 # Result appended before non linearity
                 final_data = self.mult_add(extracted_data, final_process_m, final_process_b, final_basename)
@@ -456,7 +457,7 @@ class NetworkBase(object):
             reshaped_out_first = tf.reshape(cut_unused, shape_out_first)
             kernel = tf.transpose(reshaped_out_first, [1, 2, 3, 0])
 
-            kernel = self.log_kernel(kernel)
+            #kernel = self.log_kernel(kernel)
 
         # sanity check on shape
         for shape_index in range(4):
@@ -528,7 +529,6 @@ class NetworkBase(object):
             dilations=[1, 1, 1, 1],
             name=name
         )
-
 
         if add_biases:  # todo param shape
             biases = tf.Variable(-5 * np.ones(shape=(out_ch,)), dtype=tf.float32)
