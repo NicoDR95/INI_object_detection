@@ -67,10 +67,9 @@ class TrainPipeline(object):
                     if loss > self.parameters.loss_filename_print_threshold or math.isnan(loss):
                         log.warn("Following images gave loss higher than threshold: {}".format(filenames))
 
-                    # step_idx = self.epoch_step * int(ceil((n_images / self.parameters.batch_size)))+batch_iter_counter
                     self.summary_writer.add_summary(summary, self.sess.run(self.global_step))
+                    self.summary_writer.flush()
 
-                    # self.summary_writer.flush()
                     batch_end_t = time.time()
                     batch_time = batch_end_t - batch_start_t
                     img_s = self.parameters.batch_size / batch_time
@@ -192,7 +191,7 @@ class TrainPipeline(object):
             # Tensorboard Stuff
             tf.summary.scalar("loss", self.loss_tf)
             merged_summary_op = tf.summary.merge_all()
-            summary_writer = tf.summary.FileWriter(self.parameters.tensorboard_dir, sess.graph)
+            summary_writer = tf.summary.FileWriter(self.parameters.tensorboard_dir, sess.graph, flush_secs=30)
 
         self.tf_runned = True
 

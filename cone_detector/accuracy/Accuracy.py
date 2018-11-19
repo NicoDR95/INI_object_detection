@@ -17,6 +17,9 @@ class Accuracy(object):
         self.dataset = dataset
         self.preprocessor = preprocessor
         self.visualize = visualize
+        self.max_mean_f1_score = 0
+        self.max_overall_F1_score = 0
+        self.summary_writer = tf.summary.FileWriter(self.parameters.tensorboard_dir)
 
     # @measure_time
     def read_images_batch(self, images, path):
@@ -135,18 +138,29 @@ class Accuracy(object):
 
     # @measure_time
     def send_to_tf_summary(self, step, mean_precision, mean_recall, mean_F1_score, overall_precision, overall_recall, overall_F1_score):
-        summary_writer = tf.summary.FileWriter(self.parameters.tensorboard_dir)
+
+        if self.max_mean_f1_score < mean_F1_score:
+            self.max_mean_f1_score = mean_F1_score
+
+        if self.max_overall_F1_score < overall_F1_score:
+            self.max_overall_F1_score = overall_F1_score
+
         summary = tf.Summary()
+
         summary.value.add(tag='mean_precision', simple_value=mean_precision)
         summary.value.add(tag='mean_recall', simple_value=mean_recall)
         summary.value.add(tag='mean_F1_score', simple_value=mean_F1_score)
+        summary.value.add(tag='max_mean_f1_score', simple_value=self.max_mean_f1_score)
+
         summary.value.add(tag='overall_precision', simple_value=overall_precision)
         summary.value.add(tag='overall_recall', simple_value=overall_recall)
         summary.value.add(tag='overall_F1_score', simple_value=overall_F1_score)
-        summary.value.add(tag='Batch_size_VS_epochs', simple_value=self.parameters.batch_size)
+        summary.value.add(tag='max_overall_F1_score', simple_value=self.max_overall_F1_score)
+        summary.value.add(tag='Batch_size vs epochs', simple_value=self.parameters.batch_size)
+        summary.value.add(tag='Learning rate vs epochs', simple_value=self.parameters.learning_rate)
 
-        summary_writer.add_summary(summary, step)
-        summary_writer.flush()
+        self.summary_writer.add_summary(summary, step)
+        self.summary_writer.flush()
 
     # @measure_time
     def process_batch(self, images, training, fsg_accuracy_mode, train_sess, path, n_classes, iou_accuracy_thr):
@@ -204,7 +218,6 @@ class Accuracy(object):
                         true_positives_image += 1
                         unmatched_pred_indexes.pop(list_idx)
                         break
-
 
             true_positives_batch = true_positives_batch + true_positives_image
             # Calculate per image metrics

@@ -20,20 +20,23 @@ from visualization.Visualization import Visualization
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger()
 
+
 # ~~~~~~~~~ Directories for training ~~~~~~~~~
-run_name = 'MemlessNet_with_memory'
+run_name = 'test_new_accuracy'
 run_index = 1
 
 ws_root = "/home/asa/workspaces/Pycharm/yolo/"
 data_root = ws_root + "dataset/cones_dataset2018/"
-images_dir = data_root + 'full_set_images/'
 
-annotations_dir = data_root + 'full_set_annotations/'
+
+train_image_dir = data_root + 'train_images/'
+train_annotations_dir = data_root + '/train_annotations/'
+train_annotations_filelist = None
 
 saved_model_dir = ws_root + 'saved_models/' + run_name + '/run_{}/'.format(run_index)
 aug_annotations_dir = data_root + 'empty/'  # point to empty folder if you don't want to use augmented data
 aug_images_dir = data_root + 'augmented_images/'
-all_images_dir = [images_dir, aug_images_dir]
+all_images_dir = [train_image_dir, aug_images_dir]
 
 # ~~~~~~~~~ Directories for inference ~~~~~~~~~
 checkpoint_number = '55'
@@ -42,14 +45,16 @@ checkpoint = saved_model_dir + saved_model_name + '-' + checkpoint_number
 metagraph = checkpoint + '.meta'
 
 # ~~~~~~~~~ Directories for validation ~~~~~~~~~
-validation_data_dir = ws_root + 'validation/'
-validation_images_dir = validation_data_dir + 'validation_images_cropped/'
-validation_annotations_dir = validation_data_dir + 'validation_annotations_cropped/'
+validation_data_dir = ws_root + "dataset/cones_dataset2018/"
+validation_images_dir = validation_data_dir + 'validation_images/'
+validation_annotations_dir = validation_data_dir + 'validation_annotations/'
+validation_annotations_filelist = None
 
 # ~~~~~~~~~ Directories for augmentation ~~~~~~~~~
 augmented_image_dir = data_root + 'augmented_images/'
 augmented_annotations_dir = data_root + 'augmented_annotations/'
 tfrecord_output_dir = data_root + 'tfrecords_output/'
+aug_annotations_filelist = None
 
 # ~~~~~~~~~ Directories for testing ~~~~~~~~~
 test_dir = ws_root + 'test/'
@@ -61,7 +66,7 @@ test_video_name = 'trackdrive_cropped.mp4'
 test_video_path = test_video_dir + test_video_name
 
 # ~~~~~~~~~ Directories for anchors ~~~~~~~~~
-annotations_for_anchors = annotations_dir
+annotations_for_anchors = None
 
 # ~~~~~~~~~ General settings ~~~~~~~~~
 training_mode = True
@@ -190,8 +195,8 @@ if __name__ == "__main__":
                                            input_depth=input_depth,
                                            output_h=output_h,
                                            output_w=output_w,
-                                           annotations_dir=annotations_dir,
-                                           images_dir=images_dir,
+                                           annotations_dir=None,
+                                           images_dir=None,
                                            all_images_dir=all_images_dir,
                                            saved_model_dir=saved_model_dir,
                                            saved_model_name=saved_model_name,
@@ -248,15 +253,25 @@ if __name__ == "__main__":
                                            print_sel_p=print_sel_p
                                            )
 
-        dataset_parser = dataset_parser_type(parameters=train_parameters,
-                                             annotations_dir=annotations_dir,
-                                             annotations_filelist=None)
+        train_dataset_parser = dataset_parser_type(parameters=train_parameters,
+                                                   base_path=train_annotations_dir,
+                                                   annotations_filelist=train_annotations_filelist)
+
+        validation_dataset_parser = dataset_parser_type(parameters=train_parameters,
+                                                        base_path=validation_annotations_dir,
+                                                        annotations_filelist=validation_annotations_filelist)
 
         aug_dataset_parser = dataset_parser_type(parameters=train_parameters,
-                                                 annotations_dir=aug_annotations_dir,
-                                                 annotations_filelist=None)
-        cones_dataset_parser = [dataset_parser, aug_dataset_parser]  # Put here ll the dataset you intend to train on toghether
-        single_dataset_parser = dataset_parser  # Put here the single set on which you want to perform aumentation or acccuracy or anchors k mean
+                                                 base_path=aug_annotations_dir,
+                                                 annotations_filelist=aug_annotations_filelist)
+
+        single_dataset_parser = dataset_parser_type(parameters=train_parameters,
+                                                    base_path=None,
+                                                    annotations_filelist=None)
+
+        train_cones_dataset_parser = [train_dataset_parser, aug_dataset_parser]  # Put here ll the dataset you intend to train on toghether
+        # single_dataset_parser = train_dataset_parser  # Put here the single set on which you want to perform aumentation or acccuracy or anchors k
+        #  mean
 
         data_preprocessor = data_preprocessor_type(parameters=train_parameters)
 
@@ -278,7 +293,7 @@ if __name__ == "__main__":
 
         accuracy = accuracy_type(parameters=train_parameters,
                                  prediction=predictor,
-                                 dataset=single_dataset_parser,
+                                 dataset=validation_dataset_parser,
                                  preprocessor=data_preprocessor,
                                  visualize=visualize)
 
@@ -294,8 +309,8 @@ if __name__ == "__main__":
                                                      output_path=tfrecord_output_dir)
 
         augmentation = augmentation_type(parameters=train_parameters,
-                                         image_dir=images_dir,
-                                         annotations_dir=annotations_dir,
+                                         image_dir=None,
+                                         annotations_dir=None,
                                          augmented_image_dir=augmented_image_dir,
                                          augmented_annotations_dir=augmented_annotations_dir,
                                          dataset=single_dataset_parser,
@@ -336,7 +351,7 @@ if __name__ == "__main__":
                                          )
 
         train_pipeline = pipeline_type(parameters=train_parameters,
-                                       dataset=cones_dataset_parser,
+                                       dataset=train_cones_dataset_parser,
                                        data_preprocessing=data_preprocessor,
                                        batch_generator=batch_generator,
                                        network=yolo_network,
