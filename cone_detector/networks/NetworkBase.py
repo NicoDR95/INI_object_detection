@@ -297,7 +297,8 @@ class NetworkBase(object):
         # with tf.device("/gpu:0"):
         # Placeholder for input batch of images
         log.info("Creating input placeholder...")
-        self.input_ph = tf.placeholder(shape=[None, self.parameters.input_h, self.parameters.input_w, self.parameters.input_depth], dtype=tf.float32,
+        self.input_ph = tf.placeholder(shape=[None, self.parameters.input_h, self.parameters.input_w, self.parameters.input_depth],
+                                       dtype=tf.float32,
                                        name='image_placeholder')
 
         self.train_flag_ph = tf.placeholder(dtype=tf.bool, name='flag_placeholder')
@@ -384,69 +385,45 @@ class NetworkBase(object):
         global_start = start
         name_und = name + "_"
         scope_name = name_und + "memless_network"
-        seed_num_units = 128
-        expansion_num_units = 32
-        extraction_num_units = 128
+
+        expansion_num_units = 128
+        extraction_num_units = 18
 
         leaky_coeff = 1.0 / 256.0
-        num_expans_steps = 16
 
         num_out_ch = kernel_shape[3]
         shape_out_first = [kernel_shape[3], kernel_shape[0], kernel_shape[1], kernel_shape[2]]
         num_weight_per_out_ch = kernel_shape[0] * kernel_shape[1] * kernel_shape[2]
         num_extract_steps = int(math.ceil(kernel_shape[0] * kernel_shape[1] * kernel_shape[2] / extraction_num_units))
 
-        log.info("num_expans_steps: {}".format(num_expans_steps))
-        log.info("Num extract steps: {}".format(num_expans_steps))
+        log.info("Num extract steps: {}".format(num_extract_steps))
 
         with tf.name_scope(scope_name) and tf.variable_scope(scope_name):
             # Seeds specific for each out ch
-            seeds = self.get_memless_var(name=name_und + "seeds", shape=[num_out_ch, seed_num_units], random_uniform=True)
+            seeds = self.get_memless_var(name=name_und + "seeds", shape=[num_out_ch, expansion_num_units], random_uniform=True)
 
-            '''# cast the seeds into a higher dim space before espansion
-            dim_m = self.get_memless_var(name=name_und + "dim_m", shape=[seed_num_units, expansion_num_units])
-            dim_b = self.get_memless_var(name=name_und + "dim_b", shape=[expansion_num_units], zero_init=True)
-            high_dim = self.mult_add_leaky(seeds, dim_m, dim_b, leaky_coeff, name_und + "high_dim")
-
-            # expans stage. A single variable is used multiple times to expand the data
-            expans_m = self.get_memless_var(name=name_und + "expans_m", shape=[expansion_num_units, expansion_num_units])
-            expans_b = self.get_memless_var(name=name_und + "expans_b", shape=[expansion_num_units], zero_init=True)
-            expanded_data = high_dim
-
-            for expans_step in range(num_expans_steps):
-                basename = name_und + "expans_{}_".format(expans_step)
-                if int((expans_step % 2)) == 0:
-                    expanded_data = self.mult_add_leaky(expanded_data, expans_m, expans_b, leaky_coeff, basename) + high_dim
-                else:
-                    expanded_data = self.mult_add_leaky(expanded_data, expans_m, expans_b, leaky_coeff, basename)
-
-            # Post expansion steps, cast to extraction dimensions
-            post_exp_m = self.get_memless_var(name=name_und + "post_exp_m", shape=[expansion_num_units, extraction_num_units])
-            post_exp_b = self.get_memless_var(name=name_und + "post_exp_b", shape=[extraction_num_units], zero_init=True)
-            post_exp_data = self.mult_add_leaky(expanded_data, post_exp_m, post_exp_b, leaky_coeff, name_und + "post_exp")
-            '''
             # extract stage. Here we need to get the actual weights. The input is of shape [num_out_ch, dim_num_units]
-            extraction_m = self.get_memless_var(name=name_und + "extraction_m", shape=[extraction_num_units, extraction_num_units])
+            expansion_m = self.get_memless_var(name=name_und + "expansion_m", shape=[expansion_num_units, expansion_num_units])
+            expansion_b = self.get_memless_var(name=name_und + "expansion_b", shape=[expansion_num_units], zero_init=True)
+
+            extraction_m = self.get_memless_var(name=name_und + "extraction_m", shape=[expansion_num_units, extraction_num_units])
             extraction_b = self.get_memless_var(name=name_und + "extraction_b", shape=[extraction_num_units], zero_init=True)
 
-            final_process_m = self.get_memless_var(name=name_und + "final_process_m", shape=[extraction_num_units, extraction_num_units])
-            final_process_b = self.get_memless_var(name=name_und + "final_process_b", shape=[extraction_num_units], zero_init=True)
+            expanded_data = 0.0
 
-            extracted_data = 0.0
-
-            final_data_list = list()
+            extracted_data_list = list()
             for extract_step in range(num_extract_steps):
+                expand_basename = name_und + "expand_{}_".format(extract_step)
                 extract_basename = name_und + "extract_{}_".format(extract_step)
-                final_basename = name_und + "final_{}_".format(extract_step)
 
-                extracted_data = extracted_data + seeds
-                extracted_data = self.mult_add_leaky(extracted_data, extraction_m, extraction_b, leaky_coeff, extract_basename)
+                expanded_data = expanded_data + seeds
+                expanded_data = self.mult_add_leaky(expanded_data, expansion_m, expansion_b, leaky_coeff, expand_basename)
                 # Result appended before non linearity
-                final_data = self.mult_add(extracted_data, final_process_m, final_process_b, final_basename)
+                extracted_data = self.mult_add(expanded_data, extraction_m, extraction_b, extract_basename)
 
-                final_data_list.append(final_data)
+                extracted_data_list.append(extracted_data)
 
-            concat_weights = tf.concat(final_data_list, axis=1)
+            concat_weights = tf.concat(extracted_data_list, axis=1)
             # print(concat_weights.shape)
             cut_unused = tf.slice(concat_weights, begin=[0, 0], size=[num_out_ch, num_weight_per_out_ch])
             rescale_m = self.get_memless_var(name=name_und + "rescale_m", shape=[1], value_init=1.0)
@@ -457,7 +434,7 @@ class NetworkBase(object):
             reshaped_out_first = tf.reshape(cut_unused, shape_out_first)
             kernel = tf.transpose(reshaped_out_first, [1, 2, 3, 0])
 
-            #kernel = self.log_kernel(kernel)
+            # kernel = self.log_kernel(kernel)
 
         # sanity check on shape
         for shape_index in range(4):

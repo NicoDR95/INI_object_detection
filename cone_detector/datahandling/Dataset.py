@@ -1,25 +1,39 @@
+import logging
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
+
 import os
-import logging
+
 log = logging.getLogger()
 
 
 class Dataset(object):
 
-    def __init__(self, parameters, annotations_dir):
+    def __init__(self, parameters, annotations_dir, annotations_filelist):
         self.parameters = parameters
         self.annotations_dir = annotations_dir
+        self.annotations_filelist = annotations_filelist
 
-    def get_dataset_dict(self, particular_dir=None):
-        log.info("Reading a dataset")
+    def get_dataset_dict(self):
+
         img_anns = []
         classes = OrderedDict()
 
-        if particular_dir is not None:
-            self.annotations_dir = particular_dir
         try:
-            for ann in os.listdir(self.annotations_dir):
+            if self.annotations_filelist is None:
+                log.info("Reading dataset in dir {}".format(self.annotations_dir))
+                filelist = [ann for ann in os.listdir(self.annotations_dir)]
+            else:
+                log.info("Reading dataset from filelist {}".format(self.annotations_filelist))
+                with open(self.annotations_filelist) as f:
+                    content = f.readlines()
+
+                # remove whitespace characters like `\n` at the end of each line and append xml
+                filelist = ["/" + x.strip() + ".xml" for x in content]
+
+            log.info("Found {} files".format(len(filelist)))
+
+            for ann in filelist:
                 img = {'object': []}
 
                 tree = ET.parse(self.annotations_dir + ann)
@@ -47,7 +61,7 @@ class Dataset(object):
                                     classes[obj_name] = 1
 
                                 # add additional label if class label available
-                                #if obj_name in self.parameters.labels_dict:
+                                # if obj_name in self.parameters.labels_dict:
                                 #    obj['class'] = self.parameters.labels_dict[obj['name']]
                                 img['object'] += [obj]
 
@@ -62,7 +76,7 @@ class Dataset(object):
                                     if 'ymax' in dim.tag:
                                         obj['ymax'] = int(round(float(dim.text)))
         except FileNotFoundError:
-            log.info("The folder: {} does not exists => skipping this dataset folder".format(self.annotations_dir))
+            log.warning("The folder: {} does not exists => skipping this dataset folder".format(self.annotations_dir))
             return None
 
         for dataset_class in classes:
@@ -71,7 +85,7 @@ class Dataset(object):
 
         if len(classes) != len(self.parameters.labels_list):
             log.warn("Len of found classes in dataset {} different from provided labels_dict {}".format(len(classes),
-                                                                                                              len(self.parameters.labels_list)))
+                                                                                                        len(self.parameters.labels_list)))
 
         log.info("Dataset read finished. There are {} classes in this dataset".format(len(classes)))
 
@@ -79,9 +93,3 @@ class Dataset(object):
             log.info("Class {} has {} occurrencies".format(class_key, classes[class_key]))
 
         return img_anns
-
-    # def read_image_from_file(self, img_filename):
-    #     image_path = self.images_dir + img_filename
-    #     image = scipy.ndimage.imread(image_path, mode='RGB')
-    #     image = np.array(image, dtype=np.float32)
-    #     return image

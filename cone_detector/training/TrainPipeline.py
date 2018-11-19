@@ -1,6 +1,7 @@
 import logging
 import math
 import time
+import traceback
 
 import os
 import tensorflow as tf
@@ -34,8 +35,6 @@ class TrainPipeline(object):
 
         if self.tf_runned is False:
             self.merged_summary_op, self.summary_writer, self.sess, self.saver = self.get_tf_run()
-
-        n_images = len(self.all_datasets_dict)
 
         increment_op = tf.assign_add(self.epoch_step, 1, name='increment_epoch_step')
 
@@ -74,7 +73,7 @@ class TrainPipeline(object):
                     batch_time = batch_end_t - batch_start_t
                     img_s = self.parameters.batch_size / batch_time
                     percent_batches_done = 100 * batch_iter_counter / self.batch_generator.num_batches
-                    log.info("Epoch {} - Batch {}/{} ({:.2f}%) - time: {:.2f} ({:.2f} img/s) - loss {:.5f}".format(epoch_n, batch_iter_counter+1,
+                    log.info("Epoch {} - Batch {}/{} ({:.2f}%) - time: {:.2f} ({:.2f} img/s) - loss {:.5f}".format(epoch_n, batch_iter_counter + 1,
                                                                                                                    self.batch_generator.num_batches,
                                                                                                                    percent_batches_done,
                                                                                                                    batch_time, img_s, loss))
@@ -86,11 +85,7 @@ class TrainPipeline(object):
                 log.info("Press ctrl+C again to abort")
                 time.sleep(3)
 
-                try:
-                    log.info("Evaluating results...")
-                    self.accuracy.run_and_get_accuracy(train_sess=self.sess, step=epoch_n, epoch_finished=False)
-                except:
-                    log.error("**********************Exception during get accuracy******************")
+                self.run_accuracy(epoch_n, False)
 
                 log.info("Saving the model...")
 
@@ -118,20 +113,25 @@ class TrainPipeline(object):
                 self.saver.save(self.sess, os.path.join(self.parameters.saved_model_dir, self.parameters.saved_model_name),
                                 global_step=epoch_n)
 
-            try:
-                log.info("Evaluating results...")
-                self.accuracy.run_and_get_accuracy(train_sess=self.sess, step=epoch_n)
-            except:
-                log.error("**********************Exception during get accuracy******************")
+            self.run_accuracy(epoch_n, True)
 
         log.info("Requested epochs done - training completed")
+
+    def run_accuracy(self, step, step_finished):
+        try:
+            log.info("Evaluating results...")
+            self.accuracy.run_and_get_accuracy(train_sess=self.sess, step=step, epoch_finished=step_finished)
+        except Exception as e:
+            log.error("**********************Exception during get accuracy******************")
+            log.error("Error:" + str(e))
+            traceback.print_exc()
 
     def prepare_training(self):
         with tf.device("/cpu:0"):
             with tf.name_scope(name='training_steps'):
                 global_step = tf.Variable(0, name='global_step', trainable=False)
                 epoch_step = tf.Variable(0, name='epoch_step', trainable=False)
-        annotations_dir = self.parameters.annotations_dir
+
         # self.dataset is a list of datasets, we'll iterate on them and put them is single list of dictionaries
         all_dataset_dict = list()
         for reader in self.dataset:

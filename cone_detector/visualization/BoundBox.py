@@ -1,52 +1,92 @@
+from operator import itemgetter
+
 import numpy as np
 
-class BoundBox(object):
 
-    def __init__(self, class_num, accuracy_mode):
-        self.x = 0.
-        self.y = 0.
-        self.w = 0.
-        self.h = 0.
-        self.xmin = 0.
-        self.xmax = 0.
-        self.ymin = 0.
-        self.ymax = 0.
-        self.conf = 0.
-        self.class_probs = np.zeros(class_num)
-        self.accuracy_mode = accuracy_mode
-        self.class_type = ' '
+class BoundBox(tuple):
+    # Makes the class imumutable after creation
+    __slots__ = []
 
-    def area(self):
-        return self.w*self.h
+    def __new__(cls, x, y, w, h, probs, conf, maxmin_x_rescale, maxmin_y_rescale, class_type, groundtruth, xmin, xmax, ymin, ymax):
+        if groundtruth is False:
+            area = w * h
+
+            half_w = w / 2
+            half_h = h / 2
+            width_for_inters = [x - half_w, x + half_w]
+            height_for_inters = [y - half_h, y + half_h]
+
+            xmin = int((x - half_w) * maxmin_x_rescale)
+            xmax = int((x + half_w) * maxmin_x_rescale)
+            ymin = int((y - half_h) * maxmin_y_rescale)
+            ymax = int((y + half_h) * maxmin_y_rescale)
+            max_prob = np.amax(probs)
+        else:
+            area = None
+            half_w = None
+            half_h = None
+            width_for_inters = None
+            height_for_inters = None
+            max_prob = None
+
+        xmax_xmin_area = (ymax - ymin) * (xmax - xmin)
+
+        assert (xmax_xmin_area >= 0)
+
+        return tuple.__new__(cls,
+                             (x, y, w, h, area, width_for_inters, height_for_inters, probs, conf, class_type, xmin, xmax, ymin,
+                              ymax, max_prob, half_w, half_h, xmax_xmin_area))
+
+    x = property(itemgetter(0))
+    y = property(itemgetter(1))
+    w = property(itemgetter(2))
+    h = property(itemgetter(3))
+    area = property(itemgetter(4))
+    width_for_inters = property(itemgetter(5))
+    height_for_inters = property(itemgetter(6))
+    probs = property(itemgetter(7))
+    conf = property(itemgetter(8))
+    class_type = property(itemgetter(9))
+    xmin = property(itemgetter(10))
+    xmax = property(itemgetter(11))
+    ymin = property(itemgetter(12))
+    ymax = property(itemgetter(13))
+    max_prob = property(itemgetter(14))
+    half_w = property(itemgetter(15))
+    half_h = property(itemgetter(16))
+    xmax_xmin_area = property(itemgetter(17))
+
+    def __area(self):
+        return self.w * self.h
+
     def iou(self, box, accuracy_mode=False):
         intersection = self.intersect(box, accuracy_mode)
 
         if accuracy_mode is False:
-            union = self.w*self.h + box.w*box.h - intersection
+            union = self.area + box.area - intersection
             iou = intersection / union
             return iou
         elif accuracy_mode is True:
-            pred_area = (self.ymax - self.ymin) * (self.xmax - self.xmin)
-            true_area = (box.ymax - box.ymin) * (box.xmax - box.xmin)
-            assert(pred_area >= 0)
-            assert(true_area >= 0)
-            union = pred_area + true_area - intersection
-            assert(union >= 0)
             if self.class_type == box.class_type:
-                iou = intersection / union
+                pred_area = self.xmax_xmin_area
+                true_area = box.xmax_xmin_area
+                union = pred_area + true_area - intersection
+
+                assert (union >= 0)
+
+                return intersection / union  # iou
             else:
-                iou = 0
-            return iou
+                return 0
 
     def intersect(self, box, accuracy_mode):
         if accuracy_mode is False:
-            width_inters  = self.__overlap([self.x-self.w/2, self.x+self.w/2], [box.x-box.w/2, box.x+box.w/2])
-            height_inters = self.__overlap([self.y-self.h/2, self.y+self.h/2], [box.y-box.h/2, box.y+box.h/2])
+            width_inters = self.__overlap(self.width_for_inters, box.width_for_inters)
+            height_inters = self.__overlap(self.height_for_inters, box.height_for_inters)
             intersect_area = width_inters * height_inters
             return intersect_area
 
         elif accuracy_mode is True:
-            width_inters  = self.__overlap([self.xmin, self.xmax], [box.xmin, box.xmax])
+            width_inters = self.__overlap([self.xmin, self.xmax], [box.xmin, box.xmax])
             height_inters = self.__overlap([self.ymin, self.ymax], [box.ymin, box.ymax])
             intersect_area = width_inters * height_inters
             return intersect_area
@@ -73,17 +113,22 @@ class BoundBox(object):
         # Check if the passed box is contained into the self box
         # Remember: the 0,0 point is the top_left corner
 
-        x1 = self.x-self.w/2
-        x2 = self.x+self.w/2
-        x3 = box.x-box.w/2
-        x4 = box.x+box.w/2
+        x2 = self.x + self.half_w
+        x4 = box.x + box.half_w
 
-        y1 = self.y-self.h/2
-        y2 = self.y+self.h/2
-        y3 = box.y-box.h/2
-        y4 = box.y+box.h/2
+        if x2 > x4:
+            x1 = self.x - self.half_w
+            x3 = box.x - box.half_w
 
-        if x2 > x4 and x1 < x3 and y2 > y4 and y1 < y3:
-            return True
-        else:
-            return False
+            if x1 < x3:
+                y2 = self.y + self.half_h
+                y4 = box.y + box.half_h
+
+                if y2 > y4:
+                    y1 = self.y - self.half_h
+                    y3 = box.y - box.half_h
+
+                    if y1 < y3:
+                        return True
+
+        return False

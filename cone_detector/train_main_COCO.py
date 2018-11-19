@@ -1,38 +1,38 @@
 import logging
-
 import tensorflow as tf
-
 from Parameters import Parameters
+from training.TrainPipeline import TrainPipeline
 from accuracy.Accuracy import Accuracy
 from datahandling.BatchGenerator import BatchGenerator
-from datahandling.DataAugmentation import DataAugmentation
 from datahandling.DataPreprocessing import DataPreprocessing
 from datahandling.Dataset import Dataset
-from networks.MemlessNet import MemlessNet
+
 from predict.Predict import Predict
 from training.Optimizer import Optimizer
-from training.TrainPipeline import TrainPipeline
 from training.YoloLossCrossEntropyProb import YoloLossCrossEntropyProb
+from visualization.Visualization import Visualization
+from datahandling.DataAugmentation import DataAugmentation
 from utility.CalculateAnchors import CalculateAnchors
 from utility.DatasetTFRecordsConverter import TFRecordsConverter
-from visualization.Visualization import Visualization
+
+from networks.TinyYoloOnProteins import TinyYoloOnProteins
+from networks.MemlessNet import MemlessNet
+
 
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger()
 
 # ~~~~~~~~~ Directories for training ~~~~~~~~~
-run_name = 'VOC_memless_test'
-run_index = 1
+run_name = 'VOC_test'
+run_index = 2
 
 ws_root = "/home/asa/workspaces/Pycharm/yolo/"
-data_root = ws_root + "dataset/VOC2012/"
+data_root = ws_root + "dataset/coco/"
 
-images_dir = data_root + 'JPEGImages/'
-annotations_dir = data_root + 'Annotations/'
-train_annotations_filelist = data_root + "ImageSets/Main/train.txt"
-
+images_dir = data_root + 'test_img/'
+annotations_dir = data_root + 'test_ann/'
 saved_model_dir = ws_root + 'saved_models/' + run_name + '/run_{}/'.format(run_index)
-aug_annotations_dir = data_root + 'empty/'  # point to empty or inexistent folder if you don't want to use augmented data
+aug_annotations_dir = data_root + 'empty/'          # point to empty or inexistent folder if you don't want to use augmented data
 aug_images_dir = data_root + 'augmented_images/'
 all_images_dir = [images_dir, aug_images_dir]
 
@@ -44,12 +44,11 @@ metagraph = checkpoint + '.meta'
 
 # ~~~~~~~~~ Directories for validation ~~~~~~~~~
 # validation_data_dir = ws_root + 'validation/'
-validation_annotations_filelist = data_root + "ImageSets/Main/val.txt"
-validation_images_dir = images_dir
-validation_annotations_dir = data_root + 'Annotations/'
+validation_data_dir = data_root
+validation_images_dir = validation_data_dir + 'val_img/'
+validation_annotations_dir = validation_data_dir + 'val_ann/'
 
 # ~~~~~~~~~ Directories for augmentation ~~~~~~~~~
-aug_annotations_filelist = None
 augmented_image_dir = data_root + 'augmented_images/'
 augmented_annotations_dir = data_root + 'augmented_annotations/'
 tfrecord_output_dir = data_root + 'tfrecords_output/'
@@ -79,7 +78,7 @@ visualize_dataset = False
 visualize_preprocessed_images = False
 leaky_relu = False
 use_sqrt_loss = False
-checkpoints_to_keep = 10  # number of chkp you want to keep at any time, older are automatically deleted
+checkpoints_to_keep = 10        # number of chkp you want to keep at any time, older are automatically deleted
 # labels_list = ['yellow_cones', 'blue_cones', 'orange_cones']
 labels_list = ['person', 'car', 'bicycle', 'bus', 'motorbike', 'train', 'aeroplane', 'boat', 'chair', 'bottle',
                'diningtable', 'pottedplant', 'tvmonitor', 'sofa', 'bird', 'cat', 'cow', 'dog', 'horse', 'sheep', 'head', 'hand', 'foot']
@@ -88,36 +87,36 @@ anchors = [1.3221, 1.73145, 3.19275, 4.00944, 5.05587, 8.09892, 9.47112, 4.84053
 loss_filename_print_threshold = 50
 fixed_point_width = 8
 n_classes = 23
-n_anchors = int(len(anchors) / 2)
+n_anchors = int(len(anchors)/2)
 input_h = 416
 input_w = 416
 add_fourth_channel = False
 use_grayscale_mask = False
 use_hue_mask = True
-visualize_fourth_channel = False  # Use this to visualize if the result on the 4th channel are good
+visualize_fourth_channel = False            # Use this to visualize if the result on the 4th channel are good
 input_depth = 3
 output_h = 13
 output_w = 13
-batch_size = 16
+batch_size = 1
 n_epochs = 10000
-scale_coor = 4.0
-scale_noob = 2.0
+scale_coor = 1.0
+scale_noob = 1.0
 scale_conf = 5.0
-scale_proob = 1.5
-data_preprocessing_normalize = 256
+scale_proob = 1.0
+data_preprocessing_normalize = 255.0
 tf_device = "/gpu:0"
 debug = True
-print_sel_p = False
-learning_rate = 10 ** (-5)
+print_sel_p=False
+learning_rate = 10 ** (-6)
 dropout = [0.0]
 
 # ~~~~~~~~~ Inference and accuracy settings ~~~~~~~~~
-import_graph_from_metafile = True  # set to true if you intend to run inference on a graph in a meta file
-weights_from_npy = False  # set to true only if using a graph that loads weights from npy files
-keep_small_ones = False  # to avoid avaing big boxes with more cones in one
+import_graph_from_metafile = True       # set to true if you intend to run inference on a graph in a meta file
+weights_from_npy = False                     # set to true only if using a graph that loads weights from npy files
+keep_small_ones = False                      # to avoid avaing big boxes with more cones in one
 car_pov_inference_mode = False
-min_distance_from_top = 200  # put 0 to disenable the contidion
-max_area_distant_obj = 18000  # Put an extremely high value to disenable the condition
+min_distance_from_top = 200                 # put 0 to disenable the contidion
+max_area_distant_obj = 18000               # Put an extremely high value to disenable the condition
 video_mode = True
 save_video_to_file = False
 framerate = 20
@@ -125,24 +124,24 @@ video_output_name = 'trackdrive_quantized_p8_cross' + '_' + str(framerate)
 fsg_accuracy_mode = False
 visualize_accuracy_outputs = False
 threshold = 0.7
-iou_threshold = 0.4  # Threshold used for non-max suppression (The higher it is, the lower the suppression)
+iou_threshold = 0.4   # Threshold used for non-max suppression (The higher it is, the lower the suppression)
 iou_accuracy_thr = 0.4  # Threshold used for accuracy metric (if iou with ground truth is higher then it's a TP)
 
 # ~~~~~~~~~ Data augmentation settings ~~~~~~~~~
-augmentation_run = '11'  # Change this number to perform augmentation runs without replacing old ones
+augmentation_run = '11'                  # Change this number to perform augmentation runs without replacing old ones
 visualize_augmented_dataset_mode = False
 make_tfrecords_mode = True
 check_augmentation = False
 crop_for_aspect_ratio = True
-target_aspect_ratio = 2  # 2:1
+target_aspect_ratio = 2                 # 2:1
 shuffle_functions = True
 mirror_flag = False
 translate_flag = False
 translate_x = 100
 translate_y = 100
 rotate_flag = False
-rotate_range = 6  # The rotation angle on each image will be a random angle
-rotate_no_cut = True  # between +- rotate_range
+rotate_range = 6                      # The rotation angle on each image will be a random angle
+rotate_no_cut = True                    # between +- rotate_range
 illumination_flag = False
 gamma_change_min = 0.7
 gamma_change_max = 1.7
@@ -155,25 +154,25 @@ salt_vs_pepper_min = 0.3
 salt_vs_pepper_max = 0.7
 salt_pepper_amount_min = 0.003
 salt_pepper_amount_max = 0.008
-poisson_noise_flag = False  # quite useless, r wrong implementation
-speckle_noise_flag = False  # this adds an extreme amount of noise, don't use it
+poisson_noise_flag = False               # quite useless, r wrong implementation
+speckle_noise_flag = False               # this adds an extreme amount of noise, don't use it
 gaussian_blur_flag = False
-gaussian_kernel_min = 7  # must be odd numbers
+gaussian_kernel_min = 7                 # must be odd numbers
 gaussian_kernel_max = 15
-gaussian_sigma = 0  # leave it to 0 so that it's calculated from the the kernel size
-average_blur_flag = False  # don't use both blur together
-average_kernel_min = 11  # must be odd numbers
+gaussian_sigma = 0                       # leave it to 0 so that it's calculated from the the kernel size
+average_blur_flag = False                # don't use both blur together
+average_kernel_min = 11                  # must be odd numbers
 average_kernel_max = 21
 
 # ~~~~~~~~~ Anchors mode settings ~~~~~~~~~
-n_clusters = 4  # anchors mode is run on annotations_dir files
-n_init = 1000  # Number of time the k-means algorithm will be run with different centroid seeds
-max_iter = 1000  # Maximum number of iterations of the k-means algorithm for a single run.
+n_clusters = 4                  # anchors mode is run on annotations_dir files
+n_init = 1000                   # Number of time the k-means algorithm will be run with different centroid seeds
+max_iter = 1000                 # Maximum number of iterations of the k-means algorithm for a single run.
 
 # ~~~~~~~~~ Class settings ~~~~~~~~~
 parameters_type = Parameters
 dataset_parser_type = Dataset
-network_type = MemlessNet
+network_type = TinyYoloOnProteins
 data_preprocessor_type = DataPreprocessing
 batch_generator_type = BatchGenerator
 loss_type = YoloLossCrossEntropyProb
@@ -254,19 +253,12 @@ if __name__ == "__main__":
                                            print_sel_p=print_sel_p
                                            )
 
-        train_dataset_parser = dataset_parser_type(parameters=train_parameters,
-                                                   annotations_dir=annotations_dir,
-                                                   annotations_filelist=train_annotations_filelist)
-
-        validation_dataset_parser = dataset_parser_type(parameters=train_parameters,
-                                                        annotations_dir=annotations_dir,
-                                                        annotations_filelist=validation_annotations_filelist)
-
+        dataset_parser = dataset_parser_type(parameters=train_parameters,
+                                             annotations_dir=annotations_dir)
         aug_dataset_parser = dataset_parser_type(parameters=train_parameters,
-                                                 annotations_dir=aug_annotations_dir,
-                                                 annotations_filelist=aug_annotations_filelist)
-        cones_dataset_parser = [train_dataset_parser, aug_dataset_parser]  # Put here ll the dataset you intend to train on toghether
-        single_dataset_parser = train_dataset_parser  # Put here the single set on which you want to perform aumentation or acccuracy or anchors k mean
+                                                 annotations_dir=aug_annotations_dir)
+        cones_dataset_parser = [dataset_parser, aug_dataset_parser]     # Put here ll the dataset you intend to train on toghether
+        single_dataset_parser = dataset_parser      # Put here the single set on which you want to perform aumentation or acccuracy or anchors k mean
 
         data_preprocessor = data_preprocessor_type(parameters=train_parameters)
 
@@ -288,7 +280,7 @@ if __name__ == "__main__":
 
         accuracy = accuracy_type(parameters=train_parameters,
                                  prediction=predictor,
-                                 dataset=validation_dataset_parser,
+                                 dataset=single_dataset_parser,
                                  preprocessor=data_preprocessor,
                                  visualize=visualize)
 

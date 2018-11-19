@@ -23,7 +23,7 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger()
 
 # ~~~~~~~~~ Directories for training ~~~~~~~~~
-run_name = 'MemlessNet'
+run_name = 'MemlessNet_with_memory'
 run_index = 1
 
 ws_root = "/home/asa/workspaces/Pycharm/yolo/"
