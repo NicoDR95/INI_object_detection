@@ -2,7 +2,7 @@ from operator import itemgetter
 
 import numpy as np
 
-
+#TODO The class for the prediction should be a child of the class of the groundtruth
 class BoundBox(tuple):
     # Makes the class imumutable after creation
     __slots__ = []

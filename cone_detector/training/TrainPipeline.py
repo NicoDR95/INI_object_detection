@@ -5,7 +5,7 @@ import traceback
 
 import os
 import tensorflow as tf
-
+from utility.utility_library import measure_time
 log = logging.getLogger()
 
 
@@ -117,6 +117,7 @@ class TrainPipeline(object):
 
         log.info("Requested epochs done - training completed")
 
+    @measure_time
     def run_accuracy(self, step, step_finished):
         try:
             log.info("Evaluating results...")

@@ -156,9 +156,7 @@ class Predict(object):
                             # calculate the width and height and go to dimension 1
                             w = self.anchors_w[b] * boxes_w[image_idx, row, col, b]
                             h = self.anchors_h[b] * boxes_h[image_idx, row, col, b]
-                            # calculate confidence
 
-                            # multiply probabilities per confidence
 
                             # one one class prediction per box
                             max_indx = np.argmax(probs)  # get class

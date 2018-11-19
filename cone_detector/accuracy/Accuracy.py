@@ -4,7 +4,6 @@ import cv2
 import numpy as np
 import tensorflow as tf
 
-from utility.utility_library import measure_time
 from visualization.BoundBox import BoundBox
 
 log = logging.getLogger()
@@ -76,11 +75,11 @@ class Accuracy(object):
             images = valid_set_anns[batch_ranges[batch_range_idx]:batch_ranges[batch_range_idx + 1]]
 
             batch_precisions, batch_recalls, batch_F1_scores, batch_true_positives, tot_pred_obj, tot_real_obj = self.process_batch(images, training,
-                                                                                                                              fsg_accuracy_mode,
-                                                                                                                              train_sess,
-                                                                                                                              validation_images_dir,
-                                                                                                                              n_classes,
-                                                                                                                              iou_accuracy_thr)
+                                                                                                                                    fsg_accuracy_mode,
+                                                                                                                                    train_sess,
+                                                                                                                                    validation_images_dir,
+                                                                                                                                    n_classes,
+                                                                                                                                    iou_accuracy_thr)
             all_precisions.extend(batch_precisions)
             all_recalls.extend(batch_recalls)
             all_F1_scores.extend(batch_F1_scores)
@@ -130,7 +129,7 @@ class Accuracy(object):
         if training is True and epoch_finished is True:
             self.send_to_tf_summary(step, mean_precision, mean_recall, mean_F1_score, overall_precision, overall_recall, overall_F1_score)
 
-    @measure_time
+    # @measure_time
     def send_to_tf_summary(self, step, mean_precision, mean_recall, mean_F1_score, overall_precision, overall_recall, overall_F1_score):
         summary_writer = tf.summary.FileWriter(self.parameters.tensorboard_dir)
         summary = tf.Summary()
@@ -145,12 +144,8 @@ class Accuracy(object):
         summary_writer.add_summary(summary, step)
         summary_writer.flush()
 
-    @measure_time
+    # @measure_time
     def process_batch(self, images, training, fsg_accuracy_mode, train_sess, path, n_classes, iou_accuracy_thr):
-
-        batch_precisions = list()
-        batch_recalls = list()
-        batch_F1_scores = list()
 
         read_images, read_pure_cv2_images, read_ground_truths = self.read_images_batch(images=images, path=path)
 
@@ -174,16 +169,23 @@ class Accuracy(object):
             net_output = net_output_batch[0]
             self.visualize_accuracy_output(image, net_output)
 
+        batch_precisions = list()
+        batch_recalls = list()
+        batch_F1_scores = list()
         true_positives_batch = 0
+        tot_pred_obj_batch = 0
+        tot_real_obj_batch = 0
 
         for image_idx, net_output in enumerate(net_output_batch):
+
             image_ground_truth = read_ground_truths[image_idx]
-            n_obj_true = len(image_ground_truth)
-            n_obj_pred = len(net_output)
 
             true_positives_image = 0
-            tot_pred_obj = n_obj_pred
-            tot_real_obj = n_obj_true
+            tot_pred_obj = len(net_output)
+            tot_real_obj = len(image_ground_truth)
+
+            tot_pred_obj_batch = tot_pred_obj_batch + tot_pred_obj
+            tot_real_obj_batch = tot_real_obj_batch + tot_real_obj
 
             unmatched_pred_indexes = list(range(len(net_output)))
 
@@ -230,7 +232,7 @@ class Accuracy(object):
             assert (0 <= image_precision <= 1)
             assert (0 <= image_recall <= 1)
             assert (0 <= image_F1_score <= 1)
-        return batch_precisions, batch_recalls, batch_F1_scores, true_positives_batch, tot_pred_obj, tot_real_obj
+        return batch_precisions, batch_recalls, batch_F1_scores, true_positives_batch, tot_pred_obj_batch, tot_real_obj_batch
 
     # TODO implement: if 2 predictions are trying to predict the same object only one should count as true positive
     # todo, the others as false positive
