@@ -5,7 +5,9 @@ import traceback
 
 import os
 import tensorflow as tf
+
 from utility.utility_library import measure_time
+
 log = logging.getLogger()
 
 
@@ -95,10 +97,9 @@ class TrainPipeline(object):
 
                 # self.summary_writer.flush()
                 with tf.control_dependencies(self.summary_writer.flush()):
-                    self.saver.save(self.sess,
-                                    os.path.join(self.parameters.saved_model_dir,
-                                                 self.parameters.saved_model_name + '-mid_epoch'),
+                    self.saver.save(self.sess, os.path.join(self.parameters.saved_model_dir, self.parameters.saved_model_name + '-mid_epoch'),
                                     global_step=epoch_n)
+
                 exit("Model saved")
             epoch_end_t = time.time()
             log.info("######################### Epoch {} completed #############################".format(epoch_n))

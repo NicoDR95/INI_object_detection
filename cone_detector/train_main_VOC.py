@@ -265,6 +265,7 @@ if __name__ == "__main__":
         aug_dataset_parser = dataset_parser_type(parameters=train_parameters,
                                                  annotations_dir=aug_annotations_dir,
                                                  annotations_filelist=aug_annotations_filelist)
+
         cones_dataset_parser = [train_dataset_parser, aug_dataset_parser]  # Put here ll the dataset you intend to train on toghether
         single_dataset_parser = train_dataset_parser  # Put here the single set on which you want to perform aumentation or acccuracy or anchors k mean
 

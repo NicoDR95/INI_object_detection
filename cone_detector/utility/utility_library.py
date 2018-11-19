@@ -2,6 +2,7 @@ import time
 from datetime import datetime, timedelta
 import logging
 log = logging.getLogger()
+
 def measure_time(method):
     def timed(*args, **kw):
         start_time = time.time()
@@ -15,3 +16,4 @@ def measure_time(method):
         return result
 
     return timed
+

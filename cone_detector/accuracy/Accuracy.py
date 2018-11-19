@@ -74,13 +74,15 @@ class Accuracy(object):
         for batch_range_idx in range(resulting_num_batches):
             images = valid_set_anns[batch_ranges[batch_range_idx]:batch_ranges[batch_range_idx + 1]]
 
-            batch_precisions, batch_recalls, batch_F1_scores, batch_true_positives, batch_tot_pred_obj, batch_tot_real_obj = self.process_batch(images,
-                                                                                                                                      training,
-                                                                                                                                    fsg_accuracy_mode,
-                                                                                                                                    train_sess,
-                                                                                                                                    validation_images_dir,
-                                                                                                                                    n_classes,
-                                                                                                                                    iou_accuracy_thr)
+            batch_precisions, batch_recalls, batch_F1_scores, batch_true_positives, batch_tot_pred_obj, batch_tot_real_obj = self.process_batch(
+                images,
+                training,
+                fsg_accuracy_mode,
+                train_sess,
+                validation_images_dir,
+                n_classes,
+                iou_accuracy_thr)
+
             all_precisions.extend(batch_precisions)
             all_recalls.extend(batch_recalls)
             all_F1_scores.extend(batch_F1_scores)
@@ -202,6 +204,8 @@ class Accuracy(object):
                         true_positives_image += 1
                         unmatched_pred_indexes.pop(list_idx)
                         break
+
+
             true_positives_batch = true_positives_batch + true_positives_image
             # Calculate per image metrics
             try:
