@@ -31,9 +31,12 @@ class Accuracy(object):
             # Ground truth is a list of boxes
             image_objects = image_entry['object']
             image_boxes = list()
+
             for single_object in image_objects:
+                class_index = self.parameters.labels_list.index(single_object["name"])
+
                 box = BoundBox(x=None, y=None, w=None, h=None, probs=None, conf=None, maxmin_x_rescale=None, maxmin_y_rescale=None,
-                               class_type=single_object["name"], groundtruth=True,
+                               class_type=class_index, groundtruth=True,
                                xmin=single_object["xmin"],
                                xmax=single_object["xmax"],
                                ymin=single_object["ymin"],
@@ -52,9 +55,9 @@ class Accuracy(object):
     def run_and_get_accuracy(self, train_sess=None, step=None, epoch_finished=True):
         validation_images_dir = self.parameters.validation_images_dir
 
-        thr = self.parameters.threshold
+        conf_thr = self.parameters.conf_threshold
         iou_accuracy_thr = self.parameters.iou_accuracy_thr
-        n_classes = self.parameters.n_classes
+
         training = self.parameters.training
         fsg_accuracy_mode = self.parameters.fsg_accuracy_mode
         valid_set_anns = self.dataset.get_dataset_dict()
@@ -83,7 +86,6 @@ class Accuracy(object):
                 fsg_accuracy_mode,
                 train_sess,
                 validation_images_dir,
-                n_classes,
                 iou_accuracy_thr)
 
             all_precisions.extend(batch_precisions)
@@ -120,9 +122,9 @@ class Accuracy(object):
             overall_F1_score = 0
 
         log.info("There are {} images in the validation set".format(len(valid_set_anns)))
-        log.info("The following values are obtained with threshold={}, IoU_threshold={} IoU_accuracy_threshold={}".format(thr,
-                                                                                                                          self.parameters.iou_threshold,
-                                                                                                                          iou_accuracy_thr))
+        log.info("The following values are obtained with conf_threshold={}, IoU_threshold={} IoU_accuracy_threshold={}".format(conf_thr,
+                                                                                                                               self.parameters.iou_threshold,
+                                                                                                                               iou_accuracy_thr))
         log.info("The mean precision is: {}".format(mean_precision))
         log.info("The mean recall is:    {}".format(mean_recall))
         log.info("The mean F1 score is:  {} ".format(mean_F1_score))
@@ -163,7 +165,7 @@ class Accuracy(object):
         self.summary_writer.flush()
 
     # @measure_time
-    def process_batch(self, images, training, fsg_accuracy_mode, train_sess, path, n_classes, iou_accuracy_thr):
+    def process_batch(self, images, training, fsg_accuracy_mode, train_sess, path, iou_accuracy_thr):
 
         read_images, read_pure_cv2_images, read_ground_truths = self.read_images_batch(images=images, path=path)
 
@@ -199,11 +201,11 @@ class Accuracy(object):
             image_ground_truth = read_ground_truths[image_idx]
 
             true_positives_image = 0
-            tot_pred_obj = len(net_output)
-            tot_real_obj = len(image_ground_truth)
+            img_pred_obj = len(net_output)
+            img_real_obj = len(image_ground_truth)
 
-            tot_pred_obj_batch = tot_pred_obj_batch + tot_pred_obj
-            tot_real_obj_batch = tot_real_obj_batch + tot_real_obj
+            tot_pred_obj_batch = tot_pred_obj_batch + img_pred_obj
+            tot_real_obj_batch = tot_real_obj_batch + img_real_obj
 
             unmatched_pred_indexes = list(range(len(net_output)))
 
@@ -215,30 +217,33 @@ class Accuracy(object):
                     iou_pred_real = pred_box.iou(real_box, accuracy_mode=True)
 
                     if iou_pred_real > iou_accuracy_thr:
-                        true_positives_image += 1
+                        true_positives_image = true_positives_image + 1
                         unmatched_pred_indexes.pop(list_idx)
                         break
+
+            assert (true_positives_image <= len(image_ground_truth))
+            assert (true_positives_image <= len(net_output))
 
             true_positives_batch = true_positives_batch + true_positives_image
             # Calculate per image metrics
             try:
-                image_precision = true_positives_image / tot_pred_obj
+                image_precision = true_positives_image / img_pred_obj
             except ZeroDivisionError:
-                if tot_pred_obj == 0 and tot_real_obj == 0:
+                if img_pred_obj == 0 and img_real_obj == 0:
                     image_precision = 1
                 else:
                     image_precision = 0
             try:
-                image_recall = true_positives_image / tot_real_obj
+                image_recall = true_positives_image / img_real_obj
             except ZeroDivisionError:
-                if tot_real_obj == 0 and tot_real_obj == 0:
+                if img_pred_obj == 0 and img_real_obj == 0:
                     image_recall = 1
                 else:
                     image_recall = 0
             try:
                 image_F1_score = 2 * image_precision * image_recall / (image_precision + image_recall)
             except ZeroDivisionError:
-                if tot_real_obj == 0 and tot_real_obj == 0:
+                if img_pred_obj == 0 and img_real_obj == 0:
                     image_F1_score = 1
                 else:
                     image_F1_score = 0

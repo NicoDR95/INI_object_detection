@@ -5,6 +5,7 @@ import tensorflow as tf
 from Parameters import Parameters
 from accuracy.Accuracy import Accuracy
 from datahandling.BatchGenerator import BatchGenerator
+from datahandling.MultiProcessBatchGenerator import MultiProcessBatchGenerator
 from datahandling.DataAugmentation import DataAugmentation
 from datahandling.DataPreprocessing import DataPreprocessing
 from datahandling.Dataset import Dataset
@@ -22,7 +23,7 @@ log = logging.getLogger()
 
 
 # ~~~~~~~~~ Directories for training ~~~~~~~~~
-run_name = 'test_new_accuracy'
+run_name = 'sanity_check'
 run_index = 1
 
 ws_root = "/home/asa/workspaces/Pycharm/yolo/"
@@ -39,8 +40,8 @@ aug_images_dir = data_root + 'augmented_images/'
 all_images_dir = [train_image_dir, aug_images_dir]
 
 # ~~~~~~~~~ Directories for inference ~~~~~~~~~
-checkpoint_number = '55'
-saved_model_name = run_name
+checkpoint_number = '174'
+saved_model_name = "tiny-yolo-proteins"
 checkpoint = saved_model_dir + saved_model_name + '-' + checkpoint_number
 metagraph = checkpoint + '.meta'
 
@@ -69,9 +70,9 @@ test_video_path = test_video_dir + test_video_name
 annotations_for_anchors = None
 
 # ~~~~~~~~~ General settings ~~~~~~~~~
-training_mode = True
+training_mode = False
 inference_mode = False
-validation_mode = False
+validation_mode = True
 augmentation_mode = False
 anchors_mode = False
 
@@ -83,7 +84,8 @@ leaky_relu = False
 use_sqrt_loss = False
 checkpoints_to_keep = 10  # number of chkp you want to keep at any time, older are automatically deleted
 labels_list = ['yellow_cones', 'blue_cones', 'orange_cones']
-anchors = [0.86, 1.69, 1.44, 2.96, 0.35, 0.66, 2.34, 4.91]
+#anchors = [0.86, 1.69, 1.44, 2.96, 0.35, 0.66, 2.34, 4.91]
+anchors = [0.57, 1.21, 0.85, 1.78, 1.19, 2.50, 1.68, 3.49, 2.48, 5.03]
 loss_filename_print_threshold = 50
 fixed_point_width = 8
 n_classes = 3
@@ -123,7 +125,7 @@ framerate = 20
 video_output_name = 'trackdrive_quantized_p8_cross' + '_' + str(framerate)
 fsg_accuracy_mode = False
 visualize_accuracy_outputs = False
-threshold = 0.7
+threshold = 0.4
 iou_threshold = 0.4  # Threshold used for non-max suppression (The higher it is, the lower the suppression)
 iou_accuracy_thr = 0.4  # Threshold used for accuracy metric (if iou with ground truth is higher then it's a TP)
 
@@ -174,7 +176,7 @@ parameters_type = Parameters
 dataset_parser_type = Dataset
 network_type = MemlessNet
 data_preprocessor_type = DataPreprocessing
-batch_generator_type = BatchGenerator
+batch_generator_type = MultiProcessBatchGenerator
 loss_type = YoloLossCrossEntropyProb
 optimizer_type = Optimizer
 pipeline_type = TrainPipeline
@@ -213,7 +215,7 @@ if __name__ == "__main__":
                                            data_preprocessing_normalize=data_preprocessing_normalize,
                                            labels_list=labels_list,
                                            debug=debug,
-                                           threshold=threshold,
+                                           conf_threshold=threshold,
                                            iou_threshold=iou_threshold,
                                            metagraph=metagraph,
                                            checkpoint=checkpoint,

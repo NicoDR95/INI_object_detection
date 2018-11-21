@@ -4,10 +4,10 @@ import tensorflow as tf
 
 from Parameters import Parameters
 from accuracy.Accuracy import Accuracy
-from datahandling.BatchGenerator import BatchGenerator
 from datahandling.DataAugmentation import DataAugmentation
 from datahandling.DataPreprocessing import DataPreprocessing
 from datahandling.Dataset import Dataset
+from datahandling.MultiProcessBatchGenerator import MultiProcessBatchGenerator
 from networks.MemlessNet import MemlessNet
 from predict.Predict import Predict
 from training.Optimizer import Optimizer
@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger()
 
 # ~~~~~~~~~ Directories for training ~~~~~~~~~
-run_name = 'VOC_memless_test'
+run_name = 'VOC_tinyyolo'
 run_index = 1
 
 ws_root = "/home/asa/workspaces/Pycharm/yolo/"
@@ -74,6 +74,7 @@ augmentation_mode = False
 anchors_mode = False
 
 # ~~~~~~~~~ Training settings ~~~~~~~~~
+store_batch_y = True
 save_as_graphdef = False
 visualize_dataset = False
 visualize_preprocessed_images = False
@@ -124,7 +125,7 @@ framerate = 20
 video_output_name = 'trackdrive_quantized_p8_cross' + '_' + str(framerate)
 fsg_accuracy_mode = False
 visualize_accuracy_outputs = False
-threshold = 0.7
+conf_threshold = 0.4
 iou_threshold = 0.4  # Threshold used for non-max suppression (The higher it is, the lower the suppression)
 iou_accuracy_thr = 0.4  # Threshold used for accuracy metric (if iou with ground truth is higher then it's a TP)
 
@@ -175,7 +176,7 @@ parameters_type = Parameters
 dataset_parser_type = Dataset
 network_type = MemlessNet
 data_preprocessor_type = DataPreprocessing
-batch_generator_type = BatchGenerator
+batch_generator_type = MultiProcessBatchGenerator
 loss_type = YoloLossCrossEntropyProb
 optimizer_type = Optimizer
 pipeline_type = TrainPipeline
@@ -214,7 +215,7 @@ if __name__ == "__main__":
                                            data_preprocessing_normalize=data_preprocessing_normalize,
                                            labels_list=labels_list,
                                            debug=debug,
-                                           threshold=threshold,
+                                           conf_threshold=conf_threshold,
                                            iou_threshold=iou_threshold,
                                            metagraph=metagraph,
                                            checkpoint=checkpoint,
@@ -255,15 +256,15 @@ if __name__ == "__main__":
                                            )
 
         train_dataset_parser = dataset_parser_type(parameters=train_parameters,
-                                                   annotations_dir=annotations_dir,
+                                                   base_path=annotations_dir,
                                                    annotations_filelist=train_annotations_filelist)
 
         validation_dataset_parser = dataset_parser_type(parameters=train_parameters,
-                                                        annotations_dir=annotations_dir,
+                                                        base_path=annotations_dir,
                                                         annotations_filelist=validation_annotations_filelist)
 
         aug_dataset_parser = dataset_parser_type(parameters=train_parameters,
-                                                 annotations_dir=aug_annotations_dir,
+                                                 base_path=aug_annotations_dir,
                                                  annotations_filelist=aug_annotations_filelist)
 
         cones_dataset_parser = [train_dataset_parser, aug_dataset_parser]  # Put here ll the dataset you intend to train on toghether
@@ -271,7 +272,7 @@ if __name__ == "__main__":
 
         data_preprocessor = data_preprocessor_type(parameters=train_parameters)
 
-        batch_generator = batch_generator_type(parameters=train_parameters)
+        batch_generator = batch_generator_type(parameters=train_parameters, store_batch_y=store_batch_y)
 
         yolo_network = network_type(parameters=train_parameters)
 

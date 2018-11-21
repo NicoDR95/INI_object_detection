@@ -26,7 +26,7 @@ class Parameters(object):
                  data_preprocessing_normalize,
                  labels_list,
                  debug,
-                 threshold,
+                 conf_threshold,
                  iou_threshold,
                  metagraph,
                  checkpoint,
@@ -92,7 +92,7 @@ class Parameters(object):
         self.data_preprocessing_normalize = data_preprocessing_normalize
         self.labels_list = labels_list
         self.debug = debug
-        self.threshold = threshold
+        self.conf_threshold = conf_threshold
         self.iou_threshold = iou_threshold
         self.metagraph = metagraph
         self.checkpoint = checkpoint

@@ -1,14 +1,10 @@
-from Parameters import Parameters
 # comment before copy file on server:
-import cv2
-import scipy.misc
-import shutil
-import numpy as np
-import tensorflow as tf
-from visualization.BoundBox import BoundBox
-from datahandling.DataPreprocessing import DataPreprocessing
-import os
 import time
+
+import cv2
+import numpy as np
+import os
+import scipy.misc
 
 
 class Visualization(object):
@@ -58,47 +54,53 @@ class Visualization(object):
         #
         #         return 0
 
-    def object_area(self, obj):
-        width = obj['xmax'] - obj['xmin']
-        height = obj['ymax'] - obj['ymin']
+    def object_area(self, box):
+        width = box.xmax - box.xmin
+        height = box.ymax - box.ymin
         area = width * height
         return area
 
-    def object_distance_from_top(self, obj):
-        centery = obj['ymax'] - (obj['ymax'] - obj['ymin']) / 2
+    def object_distance_from_top(self, box):
+        centery = box.ymax - (box.ymax - box.ymin) / 2
         return centery
 
-    def colored_rectangle_writer(self, image, obj):
+    def colored_rectangle_writer(self, image, box):
         # color are selceted in BGR way (instead of RGB), because cv2 is retarded and works with these scheme
         # area = str(self.object_area(obj))
         # from_top = str(self.object_distance_from_top(obj))
-        if obj['name'] == 'yellow_cones':
-            cv2.rectangle(image, (obj['xmin'], obj['ymin']), (obj['xmax'], obj['ymax']), (0, 1, 1), 2)
+        box_label = self.parameters.labels_list[box.class_type]
+
+
+        if box_label == 'yellow_cones':
+            cv2.rectangle(image, (box.xmin, box.ymin), (box.xmax, box.ymax), (0, 1, 1), 2)
             try:
-                cv2.putText(image, str(round(obj['prob'], 3)), (obj['xmin'], obj['ymin'] - 12),
+                cv2.putText(image, str(round(box.max_prob, 3)), (box.xmin, box.ymin - 12),
                             fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                             fontScale=0.001 * image.shape[0], color=(0, 1, 1), thickness=1)
             except KeyError:
                 pass
 
+        elif box_label == 'blue_cones':
+            cv2.rectangle(image, (box.xmin, box.ymin), (box.xmax, box.ymax), (1, 0, 0), 2)
+
+            try:
+                cv2.putText(image, str(round(box.max_prob, 3)), (box.xmin, box.ymin - 12),
+                            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                            fontScale=0.001 * image.shape[0], color=(1, 0, 0), thickness=1)
+            except KeyError:
+                pass
+
+        elif box_label == 'orange_cones':
+            cv2.rectangle(image, (box.xmin, box.ymin), (box.xmax, box.ymax), (0, 0, 1), 2)
+            try:
+                cv2.putText(image, str(round(box.max_prob, 3)), (box.xmin, box.ymin - 12),
+                            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                            fontScale=0.001 * image.shape[0], color=(0, 0, 1), thickness=1)
+            except KeyError:
+                pass
         else:
-            if obj['name'] == 'blue_cones':
-                cv2.rectangle(image, (obj['xmin'], obj['ymin']), (obj['xmax'], obj['ymax']), (1, 0, 0), 2)
-                try:
-                    cv2.putText(image, str(round(obj['prob'], 3)), (obj['xmin'], obj['ymin'] - 12),
-                                fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                                fontScale=0.001 * image.shape[0], color=(1, 0, 0), thickness=1)
-                except KeyError:
-                    pass
-            else:
-                if obj['name'] == 'orange_cones':
-                    cv2.rectangle(image, (obj['xmin'], obj['ymin']), (obj['xmax'], obj['ymax']), (0, 0, 1), 2)
-                    try:
-                        cv2.putText(image, str(round(obj['prob'], 3)), (obj['xmin'], obj['ymin'] - 12),
-                                    fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                                    fontScale=0.001 * image.shape[0], color=(0, 0, 1), thickness=1)
-                    except KeyError:
-                        pass
+            raise AttributeError("Invalid box label")
+
         return image
 
     def visualize_images_after_preprocessing(self, image, image_objects):
@@ -136,10 +138,11 @@ class Visualization(object):
 
         for box in boxes_to_print:
 
-            if self.parameters.car_pov_inference_mode is True and self.object_distance_from_top(box) < self.parameters.min_distance_from_top and self.object_area(box) > self.parameters.max_area_distant_obj:
+            if self.parameters.car_pov_inference_mode is True and self.object_distance_from_top(
+                    box) < self.parameters.min_distance_from_top and self.object_area(box) > self.parameters.max_area_distant_obj:
                 continue
             else:
-                image = self.colored_rectangle_writer(image=image, obj=box)
+                image = self.colored_rectangle_writer(image=image, box=box)
 
         return image
 
@@ -205,7 +208,7 @@ class Visualization(object):
                         output_image = output_image * self.parameters.data_preprocessing_normalize
                         video.write(np.uint8(output_image))
                 time_end = time.time()
-                fps = frame_n/(time_end - time_start)
+                fps = frame_n / (time_end - time_start)
                 print("{} frames have been processed".format(frame_n))
                 print("The fps were: {}".format(fps))
                 video.release()
@@ -223,17 +226,18 @@ class Visualization(object):
 
                     # cv2 reads in BGR from the video, transform in RGB before giving it to network!
                     image = cv2.cvtColor(pure_cv2_image, cv2.COLOR_BGR2RGB)
-                    boxes_to_print = self.prediction.network_output_pipeline(image=image, pure_cv2_image=pure_cv2_image)
+                    # Passing the image in a list because the function expects a batch of data
+                    boxes_to_print = self.prediction.network_output_pipeline(images=[image], pure_cv2_images=[pure_cv2_image])
+                    boxes_to_print = boxes_to_print[0]  # the return is for the whole batch
                     # go back to GBR in order to visualize correctly with cv2
                     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
                     # normalize the image or cv2 will draw only black rectangles smh
                     image = image / self.parameters.data_preprocessing_normalize
-                    output_image = self.draw_boxes_on_image(image=image,
-                                                            boxes_to_print=boxes_to_print)
+                    output_image = self.draw_boxes_on_image(image=image, boxes_to_print=boxes_to_print)
 
                     name = 'image' + str(frame_n)
                     cv2.imshow('image', output_image)
-                    cv2.moveWindow('image', 0, 0)
+                    # cv2.moveWindow('image', 0, 0)
                     key = cv2.waitKey()
                     if key == 27: break
                 # time_end = time.time()

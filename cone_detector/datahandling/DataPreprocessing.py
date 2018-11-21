@@ -74,10 +74,8 @@ class DataPreprocessing(object):
         resized_image = np.array(resized_image, dtype=np.float32)
         return resized_image
 
-    def resize_image_and_boxes(self, image_to_resize, image_objects, filename):
-        image_height, image_width, image_channels = image_to_resize.shape
-
-        resized_image = self.resize_image(image_to_resize=image_to_resize)
+    def resize_boxes(self, image_to_resize_shape, image_objects, filename):
+        image_height, image_width, image_channels = image_to_resize_shape
 
         image_height = float(image_height)
         image_width = float(image_width)
@@ -159,7 +157,7 @@ class DataPreprocessing(object):
                                                                                         obj[ymin_oneb],
                                                                                         obj[ymax_oneb], obj)
 
-        return resized_image, image_objects
+        return image_objects
 
     def normalize(self, image_to_normalize):
 
@@ -167,14 +165,27 @@ class DataPreprocessing(object):
 
         return normalized_image
 
-    def preprocess_for_training(self, image):
-        image, pure_cv2_image, objects, filename = self.read_image_and_xml(image)
-        image, objects = self.resize_image_and_boxes(image, objects, filename)
-        image = self.normalize(image)
-        if self.parameters.add_fourth_channel is True:
-            image = self.add_fourth_channel(pure_image=pure_cv2_image, preprocessed_image=image)
+    def preprocess_for_training(self, image, image_only=False, object_only=False):
 
-        return image, objects, filename
+        image, pure_cv2_image, objects, filename = self.read_image_and_xml(image)
+
+        if image_only is False:
+            objects = self.resize_boxes(image_to_resize_shape=image.shape, image_objects=objects, filename=filename)
+
+        if object_only is False:
+            image = self.resize_image(image_to_resize=image)
+            image = self.normalize(image)
+
+            if self.parameters.add_fourth_channel is True:
+                image = self.add_fourth_channel(pure_image=pure_cv2_image, preprocessed_image=image)
+
+            if image_only is False:
+                return image, objects, filename
+            else:
+                return image, filename
+
+        else:
+            return objects, filename
 
     def preprocess_for_inference(self, image, pure_cv2_image):
         # image = self.read_image(image_path=image_path)

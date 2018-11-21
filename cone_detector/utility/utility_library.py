@@ -11,7 +11,7 @@ def measure_time(method):
 
         #elapsed_time = str(timedelta(seconds=end_time - start_time)) #.split('.', 2)[0]
         elapsed_time = end_time - start_time
-        log.info("{} run completed in {:.3f}".format(method.__name__, elapsed_time))
+        log.info("{} run completed in {:.3f}s".format(method.__name__, elapsed_time))
 
         return result
 

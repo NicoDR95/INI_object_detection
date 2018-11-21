@@ -42,6 +42,10 @@ class TrainPipeline(object):
 
         op_to_run = [self.optimizer, self.merged_summary_op, self.loss_tf]
 
+        self.batch_generator.set_dataset(dataset=self.all_datasets_dict,
+                                         preprocessor=self.data_preprocessing,
+                                         visualizer=self.visualizer)
+
         for epoch in range(self.parameters.n_epochs):
             try:
                 if 'mid_epoch' not in tf.train.latest_checkpoint(self.parameters.saved_model_dir):
@@ -51,9 +55,7 @@ class TrainPipeline(object):
             except TypeError:
                 epoch_n = self.sess.run(increment_op)
 
-            batches = self.batch_generator.get_generator(dataset=self.all_datasets_dict,
-                                                         preprocessor=self.data_preprocessing,
-                                                         visualizer=self.visualizer)
+            batches = self.batch_generator.get_generator()
 
             try:
                 epoch_start_t = time.time()
@@ -65,7 +67,7 @@ class TrainPipeline(object):
                                                                            self.train_flag_ph: self.parameters.training})
 
                     if loss > self.parameters.loss_filename_print_threshold or math.isnan(loss):
-                        log.warn("Following images gave loss higher than threshold: {}".format(filenames))
+                        log.warn("Following images gave loss higher than conf_threshold: {}".format(filenames))
 
                     self.summary_writer.add_summary(summary, self.sess.run(self.global_step))
                     self.summary_writer.flush()

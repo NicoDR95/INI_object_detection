@@ -2,7 +2,8 @@ from operator import itemgetter
 
 import numpy as np
 
-#TODO The class for the prediction should be a child of the class of the groundtruth
+
+# TODO The class for the prediction should be a child of the class of the groundtruth
 class BoundBox(tuple):
     # Makes the class imumutable after creation
     __slots__ = []
@@ -11,8 +12,8 @@ class BoundBox(tuple):
         if groundtruth is False:
             area = w * h
 
-            half_w = w / 2
-            half_h = h / 2
+            half_w = w / 2.
+            half_h = h / 2.
             width_for_inters = [x - half_w, x + half_w]
             height_for_inters = [y - half_h, y + half_h]
 
@@ -56,23 +57,23 @@ class BoundBox(tuple):
     half_h = property(itemgetter(16))
     xmax_xmin_area = property(itemgetter(17))
 
-    def __area(self):
-        return self.w * self.h
-
     def iou(self, box, accuracy_mode=False):
-        intersection = self.intersect(box, accuracy_mode)
 
         if accuracy_mode is False:
+            intersection = self.intersect(box, False)
             union = self.area + box.area - intersection
             iou = intersection / union
             return iou
         elif accuracy_mode is True:
             if self.class_type == box.class_type:
+                intersection = self.intersect(box, True)
                 pred_area = self.xmax_xmin_area
                 true_area = box.xmax_xmin_area
                 union = pred_area + true_area - intersection
 
+                assert (intersection >= 0)
                 assert (union >= 0)
+
 
                 return intersection / union  # iou
             else:
