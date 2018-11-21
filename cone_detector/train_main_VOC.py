@@ -85,7 +85,9 @@ checkpoints_to_keep = 10  # number of chkp you want to keep at any time, older a
 labels_list = ['person', 'car', 'bicycle', 'bus', 'motorbike', 'train', 'aeroplane', 'boat', 'chair', 'bottle',
                'diningtable', 'pottedplant', 'tvmonitor', 'sofa', 'bird', 'cat', 'cow', 'dog', 'horse', 'sheep', 'head', 'hand', 'foot']
 # anchors = [0.86, 1.69, 1.44, 2.96, 0.35, 0.66, 2.34, 4.91]
-anchors = [1.3221, 1.73145, 3.19275, 4.00944, 5.05587, 8.09892, 9.47112, 4.84053, 11.2364, 10.0071]
+# anchors = [1.3221, 1.73145, 3.19275, 4.00944, 5.05587, 8.09892, 9.47112, 4.84053, 11.2364, 10.0071]
+anchors = [1.2, 1.63, 10.9, 11.53, 2.47, 5.13, 5.83, 4.74, 10.64, 6.63, 4.86, 9.74]
+
 loss_filename_print_threshold = 50
 fixed_point_width = 8
 n_classes = 23
@@ -101,10 +103,10 @@ output_h = 13
 output_w = 13
 batch_size = 16
 n_epochs = 10000
-scale_coor = 4.0
-scale_noob = 2.0
+scale_coor = 1.0  # 4.0
+scale_noob = 1.0  # 2.0
 scale_conf = 5.0
-scale_proob = 1.5
+scale_proob = 1.0  # 1.5
 data_preprocessing_normalize = 256
 tf_device = "/gpu:0"
 debug = True
@@ -113,7 +115,7 @@ learning_rate = 10 ** (-5)
 dropout = [0.0]
 
 # ~~~~~~~~~ Inference and accuracy settings ~~~~~~~~~
-import_graph_from_metafile = True  # set to true if you intend to run inference on a graph in a meta file
+import_graph_from_metafile = False  # set to true if you intend to run inference on a graph in a meta file
 weights_from_npy = False  # set to true only if using a graph that loads weights from npy files
 keep_small_ones = False  # to avoid avaing big boxes with more cones in one
 car_pov_inference_mode = False
@@ -167,7 +169,7 @@ average_kernel_min = 11  # must be odd numbers
 average_kernel_max = 21
 
 # ~~~~~~~~~ Anchors mode settings ~~~~~~~~~
-n_clusters = 4  # anchors mode is run on annotations_dir files
+n_clusters = 6  # anchors mode is run on annotations_dir files
 n_init = 1000  # Number of time the k-means algorithm will be run with different centroid seeds
 max_iter = 1000  # Maximum number of iterations of the k-means algorithm for a single run.
 

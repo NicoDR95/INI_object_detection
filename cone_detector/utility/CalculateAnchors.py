@@ -17,7 +17,7 @@ class CalculateAnchors(object):
         output_w = self.parameters.output_w
         output_h = self.parameters.output_h
 
-        dataset_annotations = self.dataset.get_dataset_dict(self.annotations_dir)
+        dataset_annotations = self.dataset.get_dataset_dict()
         # print(dataset_annotations)
 
         input = []
@@ -32,7 +32,7 @@ class CalculateAnchors(object):
         # print(input)
         # print(input[:, 0])
 
-        kmeans = KMeans(n_clusters=self.n_clusters, n_init=50, max_iter=500).fit(input)
+        kmeans = KMeans(n_clusters=self.n_clusters, n_init=500, max_iter=5000, n_jobs=-1).fit(input)
         kmeans_pred = kmeans.predict(input)
         centers = kmeans.cluster_centers_
         print("The suggested anchors values with {} clusters are the following:\n".format(self.n_clusters))

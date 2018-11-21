@@ -55,6 +55,11 @@ class BatchGenerator(object):
         else:
             yield from self.get_generator_no_prefetch()
 
+
+
+
+
+
     def generate_stored_batch_y(self):
 
         log.info("Executing batch_y prefetching")
@@ -180,3 +185,6 @@ class BatchGenerator(object):
             # the while loop goes over the whole dataset, batch by batch
             # so every time the function is called it should return a new batch
             yield x_batch, y_batch, filenames_batch
+
+
+

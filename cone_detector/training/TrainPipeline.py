@@ -193,7 +193,7 @@ class TrainPipeline(object):
             # Tensorboard Stuff
             tf.summary.scalar("loss", self.loss_tf)
             merged_summary_op = tf.summary.merge_all()
-            summary_writer = tf.summary.FileWriter(self.parameters.tensorboard_dir, sess.graph, flush_secs=30)
+            summary_writer = tf.summary.FileWriter(self.parameters.tensorboard_dir, sess.graph, flush_secs=30, max_queue=1000)
 
         self.tf_runned = True
 
