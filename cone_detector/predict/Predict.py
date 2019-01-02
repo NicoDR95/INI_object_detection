@@ -210,7 +210,8 @@ class Predict(object):
         iou_threshold = self.parameters.iou_threshold
 
         for image_idx in range(len(images_boxes)):
-
+            
+            to_remove_idxs = []
             for c in range(n_classes):
                 # for each class get a list of indices that allow to access the images_boxes[image_idx] in the
                 # order of probability per class, highest to lowest
@@ -221,15 +222,20 @@ class Predict(object):
 
                     if images_boxes[image_idx][index_i].probs[c] != 0:
                         # for all the subsequent images_boxes[image_idx] (index j), which will have lower probability on the same class
-                        for j in range(i + 1, len(sorted_indices)):
+                                                for j in range(i + 1, len(sorted_indices)):
                             index_j = sorted_indices[j]
 
                             # if the iou of a box with a lower probability (descending order) is very high, remove that box
                             if images_boxes[image_idx][index_i].iou(images_boxes[image_idx][index_j]) > iou_threshold:
-                                images_boxes[image_idx][index_j].probs[c] = 0
+                                # images_boxes[image_idx][index_j].probs[c] = 0
+                                to_remove_idxs.append(index_j)
 
                             elif images_boxes[image_idx][index_i].is_matrioska(images_boxes[image_idx][index_j]):
                                 # remove images_boxes[image_idx] inside the another box with small area
-                                images_boxes[image_idx][index_j].probs[c] = 0
+                                # images_boxes[image_idx][index_j].probs[c] = 0
+                                to_remove_idxs.append(index_j)
 
+            for idx in to_remove_idxs:
+                images_boxes[image_idx].pop(idx)
+                
         return images_boxes
