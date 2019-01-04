@@ -235,6 +235,8 @@ class Predict(object):
                                 # images_boxes[image_idx][index_j].probs[c] = 0
                                 to_remove_idxs.append(index_j)
 
+            #Necessary to uniify the list
+            to_remove_idxs = list(set(to_remove_idxs))
             for idx in sorted(to_remove_idxs, reverse=True):
                 images_boxes[image_idx].pop(idx)
                 
