@@ -222,7 +222,7 @@ class Predict(object):
 
                     if images_boxes[image_idx][index_i].probs[c] != 0:
                         # for all the subsequent images_boxes[image_idx] (index j), which will have lower probability on the same class
-                                                for j in range(i + 1, len(sorted_indices)):
+                        for j in range(i + 1, len(sorted_indices)):
                             index_j = sorted_indices[j]
 
                             # if the iou of a box with a lower probability (descending order) is very high, remove that box
@@ -235,7 +235,7 @@ class Predict(object):
                                 # images_boxes[image_idx][index_j].probs[c] = 0
                                 to_remove_idxs.append(index_j)
 
-            for idx in to_remove_idxs:
+            for idx in sorted(to_remove_idxs, reverse=True):
                 images_boxes[image_idx].pop(idx)
                 
         return images_boxes
