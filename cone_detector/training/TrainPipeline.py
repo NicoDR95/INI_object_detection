@@ -88,7 +88,7 @@ class TrainPipeline(object):
                 log.info("Press ctrl+C again to abort")
                 time.sleep(3)
 
-                self.run_accuracy(epoch_n, False)
+
 
                 log.info("Saving the model...")
 
@@ -101,6 +101,7 @@ class TrainPipeline(object):
                     self.saver.save(self.sess, os.path.join(self.parameters.saved_model_dir, self.parameters.saved_model_name + '-mid_epoch'),
                                     global_step=epoch_n)
 
+                self.run_accuracy(epoch_n, False)
                 exit("Model saved")
             epoch_end_t = time.time()
             log.info("######################### Epoch {} completed #############################".format(epoch_n))

@@ -4,11 +4,11 @@ import tensorflow as tf
 
 from Parameters import Parameters
 from accuracy.Accuracy import Accuracy
+from datahandling.BatchGenerator import BatchGenerator
 from datahandling.DataAugmentation import DataAugmentation
 from datahandling.DataPreprocessing import DataPreprocessing
 from datahandling.Dataset import Dataset
-from datahandling.MultiProcessBatchGenerator import MultiProcessBatchGenerator
-from networks.MemlessNet import MemlessNet
+from networks.Darknet19 import Darknet19
 from predict.Predict import Predict
 from training.Optimizer import Optimizer
 from training.TrainPipeline import TrainPipeline
@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger()
 
 # ~~~~~~~~~ Directories for training ~~~~~~~~~
-run_name = 'VOC_tinyyolo'
+run_name = 'Darknet19'
 run_index = 1
 
 ws_root = "/home/asa/workspaces/Pycharm/yolo/"
@@ -37,7 +37,7 @@ aug_images_dir = data_root + 'augmented_images/'
 all_images_dir = [images_dir, aug_images_dir]
 
 # ~~~~~~~~~ Directories for inference ~~~~~~~~~
-checkpoint_number = '4'
+checkpoint_number = '325'
 saved_model_name = run_name
 checkpoint = saved_model_dir + saved_model_name + '-' + checkpoint_number
 metagraph = checkpoint + '.meta'
@@ -55,10 +55,10 @@ augmented_annotations_dir = data_root + 'augmented_annotations/'
 tfrecord_output_dir = data_root + 'tfrecords_output/'
 
 # ~~~~~~~~~ Directories for testing ~~~~~~~~~
-test_dir = ws_root + 'test/'
-test_image_dir = test_dir + 'test_image/'
-test_image_name = '400543.jpg'
-test_image_path = test_image_dir + test_image_name
+test_dir = ws_root + 'dataset/VOC2012/'
+test_image_dir = test_dir + 'JPEGImages/'
+test_image_path = test_image_dir
+
 test_video_dir = test_dir + 'test_video/'
 test_video_name = 'trackdrive_cropped.mp4'
 test_video_path = test_video_dir + test_video_name
@@ -74,19 +74,18 @@ augmentation_mode = False
 anchors_mode = False
 
 # ~~~~~~~~~ Training settings ~~~~~~~~~
-store_batch_y = True
+store_batch_y = False
 save_as_graphdef = False
 visualize_dataset = False
 visualize_preprocessed_images = False
 leaky_relu = False
 use_sqrt_loss = False
 checkpoints_to_keep = 10  # number of chkp you want to keep at any time, older are automatically deleted
-# labels_list = ['yellow_cones', 'blue_cones', 'orange_cones']
+
 labels_list = ['person', 'car', 'bicycle', 'bus', 'motorbike', 'train', 'aeroplane', 'boat', 'chair', 'bottle',
                'diningtable', 'pottedplant', 'tvmonitor', 'sofa', 'bird', 'cat', 'cow', 'dog', 'horse', 'sheep', 'head', 'hand', 'foot']
-# anchors = [0.86, 1.69, 1.44, 2.96, 0.35, 0.66, 2.34, 4.91]
-# anchors = [1.3221, 1.73145, 3.19275, 4.00944, 5.05587, 8.09892, 9.47112, 4.84053, 11.2364, 10.0071]
-anchors = [1.2, 1.63, 10.9, 11.53, 2.47, 5.13, 5.83, 4.74, 10.64, 6.63, 4.86, 9.74]
+
+anchors = [3.24, 4.94, 10.95, 11.31, 9.52, 5.94, 1.19, 1.68, 4.8, 9.59]
 
 loss_filename_print_threshold = 50
 fixed_point_width = 8
@@ -94,42 +93,46 @@ n_classes = 23
 n_anchors = int(len(anchors) / 2)
 input_h = 416
 input_w = 416
+input_depth = 3
+
 add_fourth_channel = False
 use_grayscale_mask = False
 use_hue_mask = True
 visualize_fourth_channel = False  # Use this to visualize if the result on the 4th channel are good
-input_depth = 3
+
 output_h = 13
 output_w = 13
-batch_size = 16
+batch_size = 8  ##BATCHSIZE
 n_epochs = 10000
-scale_coor = 1.0  # 4.0
-scale_noob = 1.0  # 2.0
+
+scale_coor = 1.0
+scale_noob = 1
 scale_conf = 5.0
-scale_proob = 1.0  # 1.5
-data_preprocessing_normalize = 256
+scale_proob = 1.0
+
+data_preprocessing_normalize = 256.0
 tf_device = "/gpu:0"
 debug = True
 print_sel_p = False
-learning_rate = 10 ** (-5)
+learning_rate = 10 ** (-4)
 dropout = [0.0]
 
 # ~~~~~~~~~ Inference and accuracy settings ~~~~~~~~~
 import_graph_from_metafile = False  # set to true if you intend to run inference on a graph in a meta file
 weights_from_npy = False  # set to true only if using a graph that loads weights from npy files
-keep_small_ones = False  # to avoid avaing big boxes with more cones in one
+keep_small_ones = True  # to avoid avaing big boxes with more cones in one
 car_pov_inference_mode = False
-min_distance_from_top = 200  # put 0 to disenable the contidion
-max_area_distant_obj = 18000  # Put an extremely high value to disenable the condition
-video_mode = True
+min_distance_from_top = -1  # put 0 to disenable the contidion
+max_area_distant_obj = 1800000  # Put an extremely high value to disenable the condition
+video_mode = False
 save_video_to_file = False
 framerate = 20
 video_output_name = 'trackdrive_quantized_p8_cross' + '_' + str(framerate)
 fsg_accuracy_mode = False
 visualize_accuracy_outputs = False
 conf_threshold = 0.4
-iou_threshold = 0.4  # Threshold used for non-max suppression (The higher it is, the lower the suppression)
-iou_accuracy_thr = 0.4  # Threshold used for accuracy metric (if iou with ground truth is higher then it's a TP)
+iou_threshold = 0.5  # Threshold used for non-max suppression (The higher it is, the lower the suppression)
+iou_accuracy_thr = 0.5  # Threshold used for accuracy metric (if iou with ground truth is higher then it's a TP)
 
 # ~~~~~~~~~ Data augmentation settings ~~~~~~~~~
 augmentation_run = '11'  # Change this number to perform augmentation runs without replacing old ones
@@ -169,16 +172,16 @@ average_kernel_min = 11  # must be odd numbers
 average_kernel_max = 21
 
 # ~~~~~~~~~ Anchors mode settings ~~~~~~~~~
-n_clusters = 6  # anchors mode is run on annotations_dir files
+n_clusters = 5  # anchors mode is run on annotations_dir files
 n_init = 1000  # Number of time the k-means algorithm will be run with different centroid seeds
 max_iter = 1000  # Maximum number of iterations of the k-means algorithm for a single run.
 
 # ~~~~~~~~~ Class settings ~~~~~~~~~
 parameters_type = Parameters
 dataset_parser_type = Dataset
-network_type = MemlessNet
+network_type = Darknet19
 data_preprocessor_type = DataPreprocessing
-batch_generator_type = MultiProcessBatchGenerator
+batch_generator_type = BatchGenerator
 loss_type = YoloLossCrossEntropyProb
 optimizer_type = Optimizer
 pipeline_type = TrainPipeline

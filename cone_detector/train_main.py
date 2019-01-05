@@ -71,8 +71,8 @@ annotations_for_anchors = None
 
 # ~~~~~~~~~ General settings ~~~~~~~~~
 training_mode = False
-inference_mode = False
-validation_mode = True
+inference_mode = True
+validation_mode = False
 augmentation_mode = False
 anchors_mode = False
 

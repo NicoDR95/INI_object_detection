@@ -35,6 +35,8 @@ class CalculateAnchors(object):
         kmeans = KMeans(n_clusters=self.n_clusters, n_init=500, max_iter=5000, n_jobs=-1).fit(input)
         kmeans_pred = kmeans.predict(input)
         centers = kmeans.cluster_centers_
+
+        print("There are {} boxes in the dataset".format(len(input)))
         print("The suggested anchors values with {} clusters are the following:\n".format(self.n_clusters))
         print(centers)
         print("\nValues are couples of widht and height.")

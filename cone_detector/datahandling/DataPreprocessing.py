@@ -144,7 +144,9 @@ class DataPreprocessing(object):
                 except AssertionError:
                     log.error(self.attribute_error_string.format(attr, filename, obj[attr + netin], input_h, obj))
 
-            obj["box"] = [obj['xmin_oneb'], obj['ymin_oneb'], obj['xmax_oneb'], obj['ymax_oneb']]
+            obj["box_oneb"] = [obj['xmin_oneb'], obj['ymin_oneb'], obj['xmax_oneb'], obj['ymax_oneb']]
+            obj["w_oneb"] = obj['xmax_oneb'] - obj['xmin_oneb']
+            obj["h_oneb"] = obj['ymax_oneb'] - obj['ymin_oneb']
 
             assert (obj[xmin_netin] <= obj[xmax_netin]), self.compare_error_string.format(xmin_netin, xmax_netin, obj[xmin_netin],
                                                                                           obj[xmax_netin], obj)

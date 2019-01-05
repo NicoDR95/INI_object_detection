@@ -6,7 +6,6 @@ import numpy as np
 log = logging.getLogger()
 import math
 
-
 class BatchGenerator(object):
     def __init__(self, parameters, dataset=None, preprocessor=None, visualizer=None, store_batch_y=True):
         self.parameters = parameters
@@ -55,17 +54,12 @@ class BatchGenerator(object):
         else:
             yield from self.get_generator_no_prefetch()
 
-
-
-
-
-
     def generate_stored_batch_y(self):
 
         log.info("Executing batch_y prefetching")
         n_classes = self.parameters.n_classes
         obj_class_probl = np.identity(n_classes, dtype=np.float32)
-
+        n_anchors = self.parameters.n_anchors
         stored_y_batch_shape = self.y_batch_shape
         stored_y_batch_shape[0] = self.n_images
         stored_y_batch = np.zeros(shape=stored_y_batch_shape, dtype=np.float32)
@@ -84,12 +78,13 @@ class BatchGenerator(object):
 
                 # Note that the values are stored as float to avoid losing precision
                 # We dont need to replicate [box] and [1.0] for self.parameters.n_anchors because we are indexing it with :
+                for box in range(n_anchors):
+                    stored_y_batch[image_index, y_grid, x_grid, box, 0:4] = obj["box_oneb"]
+                    stored_y_batch[image_index, y_grid, x_grid, box, 4] = 1.0  # confidence
+                    stored_y_batch[image_index, y_grid, x_grid, box, 5:5 + n_classes] = obj_class_probl[obj_idx]
+                    stored_y_batch[image_index, y_grid, x_grid, box, 5 + n_classes] = obj["x_grid_rel"]
+                    stored_y_batch[image_index, y_grid, x_grid, box, 5 + n_classes + 1] = obj["y_grid_rel"]
 
-                stored_y_batch[image_index, y_grid, x_grid, :, 0:4] = obj["box"]
-                stored_y_batch[image_index, y_grid, x_grid, :, 4] = 1.0  # confidence
-                stored_y_batch[image_index, y_grid, x_grid, :, 5:5 + n_classes] = obj_class_probl[obj_idx]
-                stored_y_batch[image_index, y_grid, x_grid, :, 5 + n_classes] = obj["x_grid_rel"]
-                stored_y_batch[image_index, y_grid, x_grid, :, 5 + n_classes + 1] = obj["y_grid_rel"]
 
         self.stored_y_batch = stored_y_batch
         self.store_batch_y_done = True
@@ -130,9 +125,10 @@ class BatchGenerator(object):
 
         l_bound = 0
         r_bound = min(self.parameters.batch_size, self.n_images)
-
+        n_anchors = self.parameters.n_anchors
         n_classes = self.parameters.n_classes
 
+        # diagonal matrix with 1 on the class
         obj_class_probl = np.identity(n_classes, dtype=np.float32)
 
         while l_bound < self.n_images:
@@ -165,12 +161,13 @@ class BatchGenerator(object):
 
                     # Note that the values are stored as float to avoid losing precision
                     # We dont need to replicate [box] and [1.0] for self.parameters.n_anchors because we are indexing it with :
+                    for box in range(n_anchors):
+                        y_batch[batch_image_idx, y_grid, x_grid, box, 0:4] = obj["box_oneb"]
+                        y_batch[batch_image_idx, y_grid, x_grid, box, 4] = 1.0  # confidence
 
-                    y_batch[batch_image_idx, y_grid, x_grid, :, 0:4] = obj["box"]
-                    y_batch[batch_image_idx, y_grid, x_grid, :, 4] = 1.0  # confidence
-                    y_batch[batch_image_idx, y_grid, x_grid, :, 5:5 + n_classes] = obj_class_probl[obj_idx]
-                    y_batch[batch_image_idx, y_grid, x_grid, :, 5 + n_classes] = obj["x_grid_rel"]
-                    y_batch[batch_image_idx, y_grid, x_grid, :, 5 + n_classes + 1] = obj["y_grid_rel"]
+                        y_batch[batch_image_idx, y_grid, x_grid, box, 5:5 + n_classes] = obj_class_probl[obj_idx]
+                        y_batch[batch_image_idx, y_grid, x_grid, box, 5 + n_classes] = obj["x_grid_rel"]
+                        y_batch[batch_image_idx, y_grid, x_grid, box, 5 + n_classes + 1] = obj["y_grid_rel"]
 
                 x_batch[batch_image_idx] = deepcopy(image)
 
@@ -185,6 +182,3 @@ class BatchGenerator(object):
             # the while loop goes over the whole dataset, batch by batch
             # so every time the function is called it should return a new batch
             yield x_batch, y_batch, filenames_batch
-
-
-

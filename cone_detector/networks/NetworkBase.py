@@ -241,9 +241,15 @@ class NetworkBase(object):
                         normalizer_fn=slim.batch_norm, normalizer_params={'is_training': self.train_flag_ph}, scope=name)
         return x
 
+    def conv_layer_bn_before_relu_no_padding(self, x, depth, kernel, activation_func, name):
+        x = slim.conv2d(inputs=x, num_outputs=depth, kernel_size=kernel, activation_fn=activation_func,
+                        normalizer_fn=slim.batch_norm, normalizer_params={'is_training': self.train_flag_ph}, scope=name, padding="VALID")
+        return x
+
     def conv_layer_bn(self, x, depth, kernel, activation_func, name):
         x = slim.conv2d(inputs=x, num_outputs=depth, kernel_size=kernel, activation_fn=activation_func,
                         normalizer_fn=slim.batch_norm, normalizer_params={'is_training': self.train_flag_ph},
+                        weights_regularizer=None,
                         scope=name)
 
         return x
@@ -262,13 +268,26 @@ class NetworkBase(object):
                              bias_initializer=tf.zeros_initializer(), name=name)
         return x
 
-    def reorg_layer(self, x, name):
+    def reorg_layer(self, x, name, darknet_mode=False):
         patch = 2
         stride = 2
-        x = tf.extract_image_patches(images=x, ksizes=[1, patch, patch, 1],
-                                     strides=[1, stride, stride, 1],
-                                     rates=[1, 1, 1, 1], padding='VALID',
-                                     name=name)
+
+        if darknet_mode is False:
+
+            x = tf.extract_image_patches(images=x, ksizes=[1, patch, patch, 1],
+                                         strides=[1, stride, stride, 1],
+                                         rates=[1, 1, 1, 1], padding='VALID',
+                                         name=name)
+
+        else:
+            batch_size, height, width, channels = x.get_shape().as_list()
+
+            out_height, out_width, out_channel = height // stride, width // stride, channels * stride * stride
+
+            x = tf.reshape(x, [-1, out_height, stride, out_width, stride, channels])
+            x = tf.transpose(x, [0, 1, 3, 2, 4, 5])  # batch_size, out_height, out_width, stride, stride, channels
+            x = tf.reshape(x, [-1, out_height, out_width, out_channel], name=name)
+
         return x
 
     def concat_layers(self, x, reordered_layer, name):

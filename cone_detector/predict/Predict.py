@@ -1,6 +1,9 @@
+import logging
+
 import numpy as np
 import tensorflow as tf
 
+log = logging.getLogger()
 from visualization.BoundBox import BoundBox
 
 
@@ -21,10 +24,9 @@ class Predict(object):
             sel_anchor_h = anchors[2 * b + 1]
             anchors_h.append(sel_anchor_h)
 
-        self.anchors_h = np.array(anchors_h)
-        self.anchors_w = np.array(anchors_w)
+        self.anchors_h = np.array(anchors_h, dtype=np.float32)
+        self.anchors_w = np.array(anchors_w, dtype=np.float32)
 
-        self.inv_sig_threshold = -np.log(1 / self.parameters.conf_threshold - 1)
 
     # @measure_time
     def network_output_pipeline(self, images, pure_cv2_images, train_sess=None):
@@ -45,6 +47,7 @@ class Predict(object):
         checkpoint = self.parameters.checkpoint
         metagraph = self.parameters.metagraph
         if self.parameters.import_graph_from_metafile is True:
+
             # import the graph from a meta file
             saver = tf.train.import_meta_graph(metagraph)
             self.sess = tf.Session()
@@ -54,13 +57,16 @@ class Predict(object):
             self.image = graph.get_tensor_by_name("image_placeholder:0")
             self.train_flag = graph.get_tensor_by_name("flag_placeholder:0")
             self.output_node = graph.get_tensor_by_name('network_output:0')
+
         elif self.parameters.import_graph_from_metafile is False and self.parameters.weights_from_npy is False:
+
             # rebuild the graph => if you want e.g. to change the input tensor shape
             self.output_node, self.image, self.train_flag = self.network.get_network()
             self.sess = tf.Session()
             with tf.device("/cpu:0"):
                 saver = tf.train.Saver()
                 saver.restore(self.sess, checkpoint)
+
         else:
             self.output_node, self.image, self.train_flag = self.network.get_network()
             self.sess = tf.Session()
@@ -122,14 +128,15 @@ class Predict(object):
         return x
 
     # @measure_time
-    def get_output_boxes(self, net_output, images):
 
+    def get_output_boxes(self, net_output, images):
+        n_classes = self.parameters.n_classes
         output_h = self.parameters.output_h
         output_w = self.parameters.output_w
         n_anchors = self.parameters.n_anchors
         boxes_for_all_images = list()
 
-        boxes_conf_above_threshold = np.where(net_output[:, :, :, :, 4] >= self.inv_sig_threshold, True, False)
+        confidences = self.sigmoid(net_output[:, :, :, :, 4])
 
         for image_idx in range(len(net_output)):
             boxes = []
@@ -139,28 +146,41 @@ class Predict(object):
                 for col in range(output_w):
                     for b in range(n_anchors):
                         # filter them out if we are not going to use them anyway
-                        if boxes_conf_above_threshold[image_idx, row, col, b]:
-                            probs = self.softmax(net_output[image_idx, row, col, b, 5:])
+                        if confidences[image_idx, row, col, b] >= self.parameters.conf_threshold:
+                            probs = self.softmax(net_output[image_idx, row, col, b, 5:5 + n_classes])
 
                             max_prob = np.amax(probs)
+                            class_type = np.argmax(probs)  # get class
                             probs[probs < max_prob] = 0
 
                             conf = self.sigmoid(net_output[image_idx, row, col, b, 4])
 
-                            p_x, p_y, p_w, p_h = net_output[image_idx, row, col, b, :4]
+                            assert conf >= self.parameters.conf_threshold
 
-                            x = (col + self.sigmoid(p_x)) / output_w
-                            y = (row + self.sigmoid(p_y)) / output_h
-                            w = self.anchors_w[b] * np.exp(p_w) / output_w
-                            h = self.anchors_h[b] * np.exp(p_h) / output_h
-
-                            max_indx = np.argmax(probs)  # get class
+                            p_x, p_y, p_w, p_h = net_output[image_idx, row, col, b, 0:4]
 
                             image_shape_x = images[image_idx].shape[1]
                             image_shape_y = images[image_idx].shape[0]
 
-                            box = BoundBox(x=x, y=y, w=w, h=h, probs=probs, conf=conf, maxmin_x_rescale=image_shape_x, maxmin_y_rescale=image_shape_y,
-                                           class_type=max_indx, groundtruth=False, xmin=None, xmax=None, ymin=None, ymax=None)
+                            # The values are in grid space
+                            x = col + self.sigmoid(p_x)
+                            y = row + self.sigmoid(p_y)
+                            w = self.anchors_w[b] * np.exp(p_w)
+                            h = self.anchors_h[b] * np.exp(p_h)
+
+                            half_w = w / 2.
+                            half_h = h / 2.
+
+                            # The values are in input image space
+                            xmin = (x - half_w) * image_shape_x / output_w
+                            xmax = (x + half_w) * image_shape_x / output_w
+                            ymin = (y - half_h) * image_shape_y / output_h
+                            ymax = (y + half_h) * image_shape_y / output_h
+
+                            # log.warn("x {} y {} w {} h {}".format(x, y, w, h))
+                            # log.warn("xmin {} xmax {} ymin {} ymax {}".format(xmin, xmax, ymin, ymax))
+
+                            box = BoundBox(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, probs=probs, class_type=class_type, conf=conf)
 
                             boxes.append(box)
 
@@ -191,16 +211,11 @@ class Predict(object):
                         for j in range(i + 1, len(sorted_indices)):
                             index_j = sorted_indices[j]
 
+                            # We suppress only if the class is the same
                             # if the iou of a box with a lower probability (descending order) is very high, remove that box
-
-                            if images_boxes[image_idx][index_i].iou(images_boxes[image_idx][index_j]) > iou_threshold and \
-                                    images_boxes[image_idx][index_j].probs[c] > self.parameters.threshold and \
-                                    images_boxes[image_idx][index_j].area() < images_boxes[image_idx][index_i].area():
-                                images_boxes[image_idx][index_i].probs[c] = 0
-
-                            elif images_boxes[image_idx][index_i].is_matrioska(images_boxes[image_idx][index_j]):
-                                # remove images_boxes[image_idx] inside the another box with small area
-                                images_boxes[image_idx][index_j].probs[c] = 0
+                            if images_boxes[image_idx][index_i].class_type == images_boxes[image_idx][index_j].class_type:
+                                if images_boxes[image_idx][index_i].iou(images_boxes[image_idx][index_j]) > iou_threshold:
+                                    images_boxes[image_idx][index_i].probs[c] = 0
 
         return images_boxes
 
@@ -208,7 +223,7 @@ class Predict(object):
 
         n_classes = self.parameters.n_classes
         iou_threshold = self.parameters.iou_threshold
-
+        raise RuntimeError("No longer implemented correctly, identical to the other version")
         for image_idx in range(len(images_boxes)):
 
             for c in range(n_classes):
@@ -226,10 +241,6 @@ class Predict(object):
 
                             # if the iou of a box with a lower probability (descending order) is very high, remove that box
                             if images_boxes[image_idx][index_i].iou(images_boxes[image_idx][index_j]) > iou_threshold:
-                                images_boxes[image_idx][index_j].probs[c] = 0
-
-                            elif images_boxes[image_idx][index_i].is_matrioska(images_boxes[image_idx][index_j]):
-                                # remove images_boxes[image_idx] inside the another box with small area
                                 images_boxes[image_idx][index_j].probs[c] = 0
 
         return images_boxes

@@ -74,13 +74,13 @@ class Dataset(object):
                         if 'bndbox' in attr.tag:
                             for dim in list(attr):
                                 if 'xmin' in dim.tag:
-                                    obj['xmin'] = int(round(float(dim.text)))
+                                    obj['xmin'] = int(dim.text)
                                 if 'ymin' in dim.tag:
-                                    obj['ymin'] = int(round(float(dim.text)))
+                                    obj['ymin'] = int(dim.text)
                                 if 'xmax' in dim.tag:
-                                    obj['xmax'] = int(round(float(dim.text)))
+                                    obj['xmax'] = int(dim.text)
                                 if 'ymax' in dim.tag:
-                                    obj['ymax'] = int(round(float(dim.text)))
+                                    obj['ymax'] = int(dim.text)
 
 
         for dataset_class in classes:

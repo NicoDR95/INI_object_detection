@@ -35,12 +35,15 @@ class Accuracy(object):
             for single_object in image_objects:
                 class_index = self.parameters.labels_list.index(single_object["name"])
 
-                box = BoundBox(x=None, y=None, w=None, h=None, probs=None, conf=None, maxmin_x_rescale=None, maxmin_y_rescale=None,
-                               class_type=class_index, groundtruth=True,
-                               xmin=single_object["xmin"],
+                box = BoundBox(xmin=single_object["xmin"],
                                xmax=single_object["xmax"],
                                ymin=single_object["ymin"],
-                               ymax=single_object["ymax"])
+                               ymax=single_object["ymax"],
+                               class_type=class_index,
+                               conf=None,
+                               probs=None
+                               )
+
                 image_boxes.append(box)
 
             read_ground_truths.append(image_boxes)
@@ -125,6 +128,8 @@ class Accuracy(object):
         log.info("The following values are obtained with conf_threshold={}, IoU_threshold={} IoU_accuracy_threshold={}".format(conf_thr,
                                                                                                                                self.parameters.iou_threshold,
                                                                                                                                iou_accuracy_thr))
+        log.info("There were {} objects in the dataset, total predictions are {} and {} are correct".format(overall_real_obj, overall_pred_obj,
+                                                                                                            overall_true_positives))
         log.info("The mean precision is: {}".format(mean_precision))
         log.info("The mean recall is:    {}".format(mean_recall))
         log.info("The mean F1 score is:  {} ".format(mean_F1_score))
@@ -212,14 +217,16 @@ class Accuracy(object):
             for real_box in image_ground_truth:
 
                 for list_idx, pred_box_idx in enumerate(unmatched_pred_indexes):
+
                     pred_box = net_output[pred_box_idx]
 
-                    iou_pred_real = pred_box.iou(real_box, accuracy_mode=True)
+                    if pred_box.class_type == real_box.class_type:
+                        iou_pred_real = pred_box.iou(real_box)
 
-                    if iou_pred_real > iou_accuracy_thr:
-                        true_positives_image = true_positives_image + 1
-                        unmatched_pred_indexes.pop(list_idx)
-                        break
+                        if iou_pred_real >= iou_accuracy_thr :
+                            true_positives_image = true_positives_image + 1
+                            unmatched_pred_indexes.pop(list_idx)
+                            break
 
             assert (true_positives_image <= len(image_ground_truth))
             assert (true_positives_image <= len(net_output))

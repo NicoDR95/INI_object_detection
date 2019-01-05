@@ -4,8 +4,8 @@ import collections
 from functools import reduce
 
 
-models_dir = '/home/nico/semester_project/cone_detector_data/saved_models/'
-model_name = 'TinyYoloOnProteins_cross_entropy/'
+models_dir = '/home/asa/Downloads/'
+model_name = 'daeNet'
 folder_name = 'saved_model_15_quantized_p8/'
 checkpoint_name = 'TinyYoloOnProteins_cross_entropy-25'
 checkpoint = models_dir + model_name + folder_name +checkpoint_name
