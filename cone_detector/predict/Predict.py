@@ -196,8 +196,10 @@ class Predict(object):
     def non_max_suppr_keep_small_ones(self, images_boxes):
         n_classes = self.parameters.n_classes
         iou_threshold = self.parameters.iou_threshold
+
         for image_idx in range(len(images_boxes)):
 
+            to_remove_idxs = []
             for c in range(n_classes):
                 # for each class get a list of indices that allow to access the images_boxes[image_idx] in the
                 # order of probability per class, highest to lowest
@@ -211,19 +213,31 @@ class Predict(object):
                         for j in range(i + 1, len(sorted_indices)):
                             index_j = sorted_indices[j]
 
-                            # We suppress only if the class is the same
                             # if the iou of a box with a lower probability (descending order) is very high, remove that box
-                            if images_boxes[image_idx][index_i].class_type == images_boxes[image_idx][index_j].class_type:
-                                if images_boxes[image_idx][index_i].iou(images_boxes[image_idx][index_j]) > iou_threshold:
-                                    images_boxes[image_idx][index_i].probs[c] = 0
+                            if images_boxes[image_idx][index_i].iou(images_boxes[image_idx][index_j]) > iou_threshold:
+                                # images_boxes[image_idx][index_j].probs[c] = 0
+                                to_remove_idxs.append(index_j)
 
-        return images_boxes
+                            elif images_boxes[image_idx][index_i].is_matrioska(images_boxes[image_idx][index_j]):
+                                # remove images_boxes[image_idx] inside the another box with small area
+                                # images_boxes[image_idx][index_j].probs[c] = 0
+                                to_remove_idxs.append(index_j)
+
+            # Necessary to uniify the list
+            to_remove_idxs = list(set(to_remove_idxs))
+            for idx in sorted(to_remove_idxs, reverse=True):
+                images_boxes[image_idx].pop(idx)
+
+
+
 
     def non_max_suppr_discard_small_ones(self, images_boxes):
 
+
+        raise RuntimeError("No longer implemented correctly, identical to the other version")
         n_classes = self.parameters.n_classes
         iou_threshold = self.parameters.iou_threshold
-        raise RuntimeError("No longer implemented correctly, identical to the other version")
+
         for image_idx in range(len(images_boxes)):
 
             for c in range(n_classes):
