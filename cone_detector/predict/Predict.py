@@ -27,7 +27,6 @@ class Predict(object):
         self.anchors_h = np.array(anchors_h, dtype=np.float32)
         self.anchors_w = np.array(anchors_w, dtype=np.float32)
 
-
     # @measure_time
     def network_output_pipeline(self, images, pure_cv2_images, train_sess=None):
         # image_to_visualize = self.preprocessor.read_image(image_path=image_path)
@@ -115,7 +114,8 @@ class Predict(object):
             images_to_network_list.append(image_to_network)
 
         stacked_images = np.stack(images_to_network_list)
-        network_output = train_sess.run(fetches=output_node_ph, feed_dict={image_ph: stacked_images, train_flag_ph: False})
+        network_output = train_sess.run(fetches=output_node_ph,
+                                        feed_dict={image_ph: stacked_images, train_flag_ph: False})
         return network_output
 
     def sigmoid(self, x):
@@ -180,7 +180,8 @@ class Predict(object):
                             # log.warn("x {} y {} w {} h {}".format(x, y, w, h))
                             # log.warn("xmin {} xmax {} ymin {} ymax {}".format(xmin, xmax, ymin, ymax))
 
-                            box = BoundBox(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, probs=probs, class_type=class_type, conf=conf)
+                            box = BoundBox(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, probs=probs,
+                                           class_type=class_type, conf=conf)
 
                             boxes.append(box)
 
@@ -208,20 +209,20 @@ class Predict(object):
                 for i in range(len(sorted_indices)):
                     index_i = sorted_indices[i]
 
-                    if images_boxes[image_idx][index_i].probs[c] != 0:
+                    base_comp_box = images_boxes[image_idx][index_i]
+
+                    if base_comp_box.probs[c] != 0:
                         # for all the subsequent images_boxes[image_idx] (index j), which will have lower probability on the same class
                         for j in range(i + 1, len(sorted_indices)):
                             index_j = sorted_indices[j]
 
-                            # if the iou of a box with a lower probability (descending order) is very high, remove that box
-                            if images_boxes[image_idx][index_i].iou(images_boxes[image_idx][index_j]) > iou_threshold:
-                                # images_boxes[image_idx][index_j].probs[c] = 0
-                                to_remove_idxs.append(index_j)
+                            running_box = images_boxes[image_idx][index_j]
 
-                            elif images_boxes[image_idx][index_i].is_matrioska(images_boxes[image_idx][index_j]):
-                                # remove images_boxes[image_idx] inside the another box with small area
-                                # images_boxes[image_idx][index_j].probs[c] = 0
-                                to_remove_idxs.append(index_j)
+                            # We suppress only if the class is the same
+                            # if the iou of a box with a lower probability (descending order) is very high, remove that box
+                            if base_comp_box.class_type == running_box.class_type:
+                                if base_comp_box.iou(running_box) > iou_threshold:
+                                    to_remove_idxs.append(index_j)
 
             # Necessary to uniify the list
             to_remove_idxs = list(set(to_remove_idxs))
@@ -230,31 +231,5 @@ class Predict(object):
 
         return images_boxes
 
-
     def non_max_suppr_discard_small_ones(self, images_boxes):
-
-
         raise RuntimeError("No longer implemented correctly, identical to the other version")
-        n_classes = self.parameters.n_classes
-        iou_threshold = self.parameters.iou_threshold
-
-        for image_idx in range(len(images_boxes)):
-
-            for c in range(n_classes):
-                # for each class get a list of indices that allow to access the images_boxes[image_idx] in the
-                # order of probability per class, highest to lowest
-                sorted_indices = list(reversed(np.argsort([box.probs[c] for box in images_boxes[image_idx]])))
-
-                for i in range(len(sorted_indices)):
-                    index_i = sorted_indices[i]
-
-                    if images_boxes[image_idx][index_i].probs[c] != 0:
-                        # for all the subsequent images_boxes[image_idx] (index j), which will have lower probability on the same class
-                        for j in range(i + 1, len(sorted_indices)):
-                            index_j = sorted_indices[j]
-
-                            # if the iou of a box with a lower probability (descending order) is very high, remove that box
-                            if images_boxes[image_idx][index_i].iou(images_boxes[image_idx][index_j]) > iou_threshold:
-                                images_boxes[image_idx][index_j].probs[c] = 0
-
-        return images_boxes
