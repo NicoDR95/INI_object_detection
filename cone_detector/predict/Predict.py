@@ -228,7 +228,7 @@ class Predict(object):
             for idx in sorted(to_remove_idxs, reverse=True):
                 images_boxes[image_idx].pop(idx)
 
-
+        return images_boxes
 
 
     def non_max_suppr_discard_small_ones(self, images_boxes):
