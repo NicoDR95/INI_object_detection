@@ -1,10 +1,13 @@
-import logging
-from copy import deepcopy
+if __name__ == "__main__":
+    pass
+else:
+    import logging
+    from copy import deepcopy
 
-import numpy as np
+    import numpy as np
 
-log = logging.getLogger()
-import math
+    log = logging.getLogger()
+    import math
 
 class BatchGenerator(object):
     def __init__(self, parameters, dataset=None, preprocessor=None, visualizer=None, store_batch_y=True):
@@ -21,6 +24,7 @@ class BatchGenerator(object):
         self.x_batch_shape = None
         self.stored_y_filenames = list()
         self.set_dataset(dataset, preprocessor, visualizer)
+
 
     def __embedded_visualizer(self, index):
         if self.parameters.visualize_dataset is True:
@@ -39,6 +43,7 @@ class BatchGenerator(object):
         self.visualizer = visualizer
         if dataset is not None:
             self.n_images = len(dataset)
+
             self.num_batches = math.ceil(self.n_images / self.parameters.batch_size)
             log.info("Batch generator received a dataset of {} images - {} batches generated".format(self.n_images, self.num_batches))
 

@@ -62,7 +62,8 @@ class Parameters(object):
                  car_pov_inference_mode,
                  keep_small_ones,
                  weights_from_npy,
-                 fixed_point_width,
+                 fixed_point_width_weights,
+                 fixed_point_width_activ,
                  print_sel_p
                  ):
         self.n_classes = n_classes
@@ -127,7 +128,8 @@ class Parameters(object):
         self.car_pov_inference_mode = car_pov_inference_mode
         self.keep_small_ones = keep_small_ones
         self.weights_from_npy = weights_from_npy
-        self.fixed_point_width = fixed_point_width
+        self.fixed_point_width_activ = fixed_point_width_activ
+        self.fixed_point_width_weights = fixed_point_width_weights
         self.print_sel_p = print_sel_p
         self.tf_device = tf_device
         self.true_values_shape = [None, output_h, output_w, n_anchors, 4 + 1 + n_classes + 2]

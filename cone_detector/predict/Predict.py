@@ -119,8 +119,8 @@ class Predict(object):
         return network_output
 
     def sigmoid(self, x):
-        x = 1. / (1. + np.exp(-x))
-        return x
+        sig = 1. / (1. + np.exp(-x))
+        return sig
 
     def softmax(self, x):
         exp_x = np.exp(x)
@@ -153,9 +153,9 @@ class Predict(object):
                             class_type = np.argmax(probs)  # get class
                             probs[probs < max_prob] = 0
 
-                            conf = self.sigmoid(net_output[image_idx, row, col, b, 4])
+                            conf = confidences[image_idx, row, col, b]
 
-                            assert conf >= self.parameters.conf_threshold
+                            assert self.parameters.conf_threshold <= conf <= 1, "Wrong conf {}".format(conf)
 
                             p_x, p_y, p_w, p_h = net_output[image_idx, row, col, b, 0:4]
 
@@ -197,9 +197,10 @@ class Predict(object):
     def non_max_suppr_keep_small_ones(self, images_boxes):
         n_classes = self.parameters.n_classes
         iou_threshold = self.parameters.iou_threshold
+        total_suppressed_box = 0
+
 
         for image_idx in range(len(images_boxes)):
-
             to_remove_idxs = []
             for c in range(n_classes):
                 # for each class get a list of indices that allow to access the images_boxes[image_idx] in the
@@ -211,24 +212,27 @@ class Predict(object):
 
                     base_comp_box = images_boxes[image_idx][index_i]
 
-                    if base_comp_box.probs[c] != 0:
-                        # for all the subsequent images_boxes[image_idx] (index j), which will have lower probability on the same class
-                        for j in range(i + 1, len(sorted_indices)):
-                            index_j = sorted_indices[j]
+                    # for all the subsequent images_boxes[image_idx] (index j), which will have lower probability on the same class
+                    for j in range(i + 1, len(sorted_indices)):
+                        index_j = sorted_indices[j]
 
-                            running_box = images_boxes[image_idx][index_j]
+                        running_box = images_boxes[image_idx][index_j]
 
-                            # We suppress only if the class is the same
-                            # if the iou of a box with a lower probability (descending order) is very high, remove that box
-                            if base_comp_box.class_type == running_box.class_type:
-                                if base_comp_box.iou(running_box) > iou_threshold:
-                                    to_remove_idxs.append(index_j)
+                        # We suppress only if the class is the same
+                        # if the iou of a box with a lower probability (descending order) is very high, remove that box
+                        if base_comp_box.class_type == running_box.class_type:
+                            if base_comp_box.iou(running_box) > iou_threshold:
+                                to_remove_idxs.append(index_j)
+
+
 
             # Necessary to uniify the list
             to_remove_idxs = list(set(to_remove_idxs))
+            total_suppressed_box = total_suppressed_box + len(to_remove_idxs)
             for idx in sorted(to_remove_idxs, reverse=True):
                 images_boxes[image_idx].pop(idx)
 
+        #log.info("Removed box by non-max suppression: {} ({} per image)".format(total_suppressed_box, total_suppressed_box//len(images_boxes)))
         return images_boxes
 
     def non_max_suppr_discard_small_ones(self, images_boxes):

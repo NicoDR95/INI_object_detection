@@ -1,5 +1,5 @@
 from networks.NetworkBase import NetworkBase
-
+import tensorflow as tf
 
 class TinyYoloOnProteins(NetworkBase):
 
@@ -16,6 +16,8 @@ class TinyYoloOnProteins(NetworkBase):
 
 
     def network_build(self, x):
+        # with tf.device("/cpu:0"):
+        #     x = tf.Print(x, [x],  message='x: ')
 
         x = self.conv_layer_bn(x, 16, (3, 3), self.activation, 'convolution_1')
 

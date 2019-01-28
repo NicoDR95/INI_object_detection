@@ -9,7 +9,7 @@ from datahandling.MultiProcessBatchGenerator import MultiProcessBatchGenerator
 from datahandling.DataAugmentation import DataAugmentation
 from datahandling.DataPreprocessing import DataPreprocessing
 from datahandling.Dataset import Dataset
-from networks.MemlessNet import MemlessNet
+from networks.TinyYoloOnProteins import TinyYoloOnProteins
 from predict.Predict import Predict
 from training.Optimizer import Optimizer
 from training.TrainPipeline import TrainPipeline
@@ -26,52 +26,53 @@ log = logging.getLogger()
 run_name = 'sanity_check'
 run_index = 1
 
-ws_root = "/home/asa/workspaces/Pycharm/yolo/"
-data_root = ws_root + "dataset/cones_dataset2018/"
+ws_root = r"C:\Users\Alessandro\Google Drive\Documents\Python\DL\amz\cone_detector\\"
+data_root = r"D:\DL\datasets\cones_dataset2018\\"
 
 
-train_image_dir = data_root + 'train_images/'
-train_annotations_dir = data_root + '/train_annotations/'
+images_dir = data_root + r'train_images\\'
+annotations_dir = data_root + r'\\train_annotations\\'
 train_annotations_filelist = None
 
-saved_model_dir = ws_root + 'saved_models/' + run_name + '/run_{}/'.format(run_index)
-aug_annotations_dir = data_root + 'empty/'  # point to empty folder if you don't want to use augmented data
-aug_images_dir = data_root + 'augmented_images/'
-all_images_dir = [train_image_dir, aug_images_dir]
+saved_model_dir = 'D:\\DL\\models\\cones_dataset2018\\' + run_name + '\\run_{}\\'.format(run_index)
+
+aug_annotations_dir = data_root + r'empty\\'  # point to empty folder if you don't want to use augmented data
+aug_images_dir = data_root + r'augmented_images\\'
+all_images_dir = [images_dir, aug_images_dir]
 
 # ~~~~~~~~~ Directories for inference ~~~~~~~~~
 checkpoint_number = '174'
-saved_model_name = "tiny-yolo-proteins"
+saved_model_name = run_name
 checkpoint = saved_model_dir + saved_model_name + '-' + checkpoint_number
 metagraph = checkpoint + '.meta'
 
 # ~~~~~~~~~ Directories for validation ~~~~~~~~~
-validation_data_dir = ws_root + "dataset/cones_dataset2018/"
-validation_images_dir = validation_data_dir + 'validation_images/'
-validation_annotations_dir = validation_data_dir + 'validation_annotations/'
+validation_data_dir = data_root
+validation_images_dir = validation_data_dir + r'validation_images\\'
+validation_annotations_dir = validation_data_dir + r'validation_annotations\\'
 validation_annotations_filelist = None
 
 # ~~~~~~~~~ Directories for augmentation ~~~~~~~~~
-augmented_image_dir = data_root + 'augmented_images/'
-augmented_annotations_dir = data_root + 'augmented_annotations/'
-tfrecord_output_dir = data_root + 'tfrecords_output/'
+augmented_image_dir = data_root + r'augmented_images\\'
+augmented_annotations_dir = data_root + r'augmented_annotations\\'
+tfrecord_output_dir = data_root + r'tfrecords_output\\'
 aug_annotations_filelist = None
 
 # ~~~~~~~~~ Directories for testing ~~~~~~~~~
-test_dir = ws_root + 'test/'
-test_image_dir = test_dir + 'test_image/'
+test_dir = ws_root + r'test\\'
+test_image_dir = test_dir + r'test_image\\'
 test_image_name = '400543.jpg'
 test_image_path = test_image_dir + test_image_name
-test_video_dir = test_dir + 'test_video/'
+test_video_dir = test_dir + r'test_video\\'
 test_video_name = 'trackdrive_cropped.mp4'
 test_video_path = test_video_dir + test_video_name
 
 # ~~~~~~~~~ Directories for anchors ~~~~~~~~~
 annotations_for_anchors = None
 
-# ~~~~~~~~~ General settings ~~~~~~~~~
-training_mode = False
-inference_mode = True
+# ~~~ General settings ~~~
+training_mode = True
+inference_mode = False
 validation_mode = False
 augmentation_mode = False
 anchors_mode = False
@@ -85,7 +86,7 @@ use_sqrt_loss = False
 checkpoints_to_keep = 10  # number of chkp you want to keep at any time, older are automatically deleted
 labels_list = ['yellow_cones', 'blue_cones', 'orange_cones']
 #anchors = [0.86, 1.69, 1.44, 2.96, 0.35, 0.66, 2.34, 4.91]
-anchors = [0.57, 1.21, 0.85, 1.78, 1.19, 2.50, 1.68, 3.49, 2.48, 5.03]
+anchors = [0.86, 1.69, 1.44, 2.96, 0.35, 0.66, 2.34, 4.91]
 loss_filename_print_threshold = 50
 fixed_point_width = 8
 n_classes = 3
@@ -99,13 +100,14 @@ visualize_fourth_channel = False  # Use this to visualize if the result on the 4
 input_depth = 3
 output_h = 8
 output_w = 16
-batch_size = 16
+batch_size = 8
+store_batch_y = True
 n_epochs = 10000
 scale_coor = 4.0
 scale_noob = 2.0
 scale_conf = 5.0
 scale_proob = 1.5
-data_preprocessing_normalize = 255.0
+data_preprocessing_normalize = 256
 tf_device = "/gpu:0"
 debug = True
 print_sel_p = False
@@ -115,7 +117,7 @@ dropout = [0.0]
 # ~~~~~~~~~ Inference and accuracy settings ~~~~~~~~~
 import_graph_from_metafile = False  # set to true if you intend to run inference on a graph in a meta file
 weights_from_npy = False  # set to true only if using a graph that loads weights from npy files
-keep_small_ones = False  # to avoid avaing big boxes with more cones in one
+keep_small_ones = True  # to avoid avaing big boxes with more cones in one
 car_pov_inference_mode = False
 min_distance_from_top = 200  # put 0 to disenable the contidion
 max_area_distant_obj = 18000  # Put an extremely high value to disenable the condition
@@ -125,8 +127,8 @@ framerate = 20
 video_output_name = 'trackdrive_quantized_p8_cross' + '_' + str(framerate)
 fsg_accuracy_mode = False
 visualize_accuracy_outputs = False
-threshold = 0.4
-iou_threshold = 0.4  # Threshold used for non-max suppression (The higher it is, the lower the suppression)
+conf_threshold = 0.5
+iou_threshold = 0.3  # Threshold used for non-max suppression (The higher it is, the lower the suppression)
 iou_accuracy_thr = 0.4  # Threshold used for accuracy metric (if iou with ground truth is higher then it's a TP)
 
 # ~~~~~~~~~ Data augmentation settings ~~~~~~~~~
@@ -174,7 +176,7 @@ max_iter = 1000  # Maximum number of iterations of the k-means algorithm for a s
 # ~~~~~~~~~ Class settings ~~~~~~~~~
 parameters_type = Parameters
 dataset_parser_type = Dataset
-network_type = MemlessNet
+network_type = TinyYoloOnProteins
 data_preprocessor_type = DataPreprocessing
 batch_generator_type = MultiProcessBatchGenerator
 loss_type = YoloLossCrossEntropyProb
@@ -197,8 +199,8 @@ if __name__ == "__main__":
                                            input_depth=input_depth,
                                            output_h=output_h,
                                            output_w=output_w,
-                                           annotations_dir=None,
-                                           images_dir=None,
+                                           annotations_dir=annotations_dir,
+                                           images_dir=images_dir,
                                            all_images_dir=all_images_dir,
                                            saved_model_dir=saved_model_dir,
                                            saved_model_name=saved_model_name,
@@ -215,7 +217,7 @@ if __name__ == "__main__":
                                            data_preprocessing_normalize=data_preprocessing_normalize,
                                            labels_list=labels_list,
                                            debug=debug,
-                                           conf_threshold=threshold,
+                                           conf_threshold=conf_threshold,
                                            iou_threshold=iou_threshold,
                                            metagraph=metagraph,
                                            checkpoint=checkpoint,
@@ -256,7 +258,7 @@ if __name__ == "__main__":
                                            )
 
         train_dataset_parser = dataset_parser_type(parameters=train_parameters,
-                                                   base_path=train_annotations_dir,
+                                                   base_path=annotations_dir,
                                                    annotations_filelist=train_annotations_filelist)
 
         validation_dataset_parser = dataset_parser_type(parameters=train_parameters,
@@ -267,17 +269,12 @@ if __name__ == "__main__":
                                                  base_path=aug_annotations_dir,
                                                  annotations_filelist=aug_annotations_filelist)
 
-        single_dataset_parser = dataset_parser_type(parameters=train_parameters,
-                                                    base_path=None,
-                                                    annotations_filelist=None)
-
-        train_cones_dataset_parser = [train_dataset_parser, aug_dataset_parser]  # Put here ll the dataset you intend to train on toghether
-        # single_dataset_parser = train_dataset_parser  # Put here the single set on which you want to perform aumentation or acccuracy or anchors k
-        #  mean
+        cones_dataset_parser = [train_dataset_parser, aug_dataset_parser]  # Put here ll the dataset you intend to train on toghether
+        single_dataset_parser = train_dataset_parser  # Put here the single set on which you want to perform aumentation or acccuracy or anchors k mean
 
         data_preprocessor = data_preprocessor_type(parameters=train_parameters)
 
-        batch_generator = batch_generator_type(parameters=train_parameters)
+        batch_generator = batch_generator_type(parameters=train_parameters, store_batch_y=store_batch_y)
 
         yolo_network = network_type(parameters=train_parameters)
 
@@ -311,8 +308,8 @@ if __name__ == "__main__":
                                                      output_path=tfrecord_output_dir)
 
         augmentation = augmentation_type(parameters=train_parameters,
-                                         image_dir=None,
-                                         annotations_dir=None,
+                                         image_dir=images_dir,
+                                         annotations_dir=annotations_dir,
                                          augmented_image_dir=augmented_image_dir,
                                          augmented_annotations_dir=augmented_annotations_dir,
                                          dataset=single_dataset_parser,
@@ -353,7 +350,7 @@ if __name__ == "__main__":
                                          )
 
         train_pipeline = pipeline_type(parameters=train_parameters,
-                                       dataset=train_cones_dataset_parser,
+                                       dataset=cones_dataset_parser,
                                        data_preprocessing=data_preprocessor,
                                        batch_generator=batch_generator,
                                        network=yolo_network,
@@ -378,20 +375,4 @@ if __name__ == "__main__":
         elif inference_mode is False and training_mode is False and validation_mode is False and augmentation_mode is False and anchors_mode is True:
             anchors_calculators.get_anchors()
         else:
-            raise ValueError("Invalid combination of tain, inference, augmentation and validations modes!")
-
-        # TODO, fix a smaller box with high probability can coesist with a bigger box which
-        # todo, contains the smaller one. The big one should be removed from non max suppression
-
-        # TODO: Data augmentation: => mirror, rotation (few degrees, 90 max), luminosity, gaussian noise, zoom in & zoom out, offset image up and down (wrap of black padding),
-        # TODO: Data augmentation: =>  add random images to the dataset images (without covering cones), paste cones images on other images( also with wrong colors), images from VOC without cones (few of these)
-        # TODO: Measure the activation sparsity and print it along with the loss
-        # TODO: layer before last => try a less sparse activation, like the selu or swift
-        # TODO: Smaller network
-        # TODO: Try dropput in the middle of the network in place of a batch norm
-        # TODO: Try to use a regularizer for the weights (smaller weights are better for the accelerator, max 2 bit)
-        # TODO: A regularizer function on the activation su increase their sparsity
-        # TODO: Pretrain on VOC
-
-        # todo the bb must follow a ratio!
-        # todo penalize wrong ratio of boxes in loss
+            raise ValueError("Invalid combination of train, inference, augmentation and validations modes!")

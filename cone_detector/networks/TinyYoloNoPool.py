@@ -5,7 +5,7 @@ log = logging.getLogger()
 
 
 
-class TinyYolo(NetworkBase):
+class TinyYoloNoPool(NetworkBase):
 
     def __init__(self, parameters):
         self.parameters = parameters
@@ -39,7 +39,6 @@ class TinyYolo(NetworkBase):
         x = self.maxpool_layer(x, (2, 2), (2, 2), 'maxpool_5')                              # 13x13
 
         x = self.conv_layer_bn(x, 512, (3, 3), self.activation, 'convolution_6')
-        x = self.maxpool_layer(x, (2, 2), (1, 1), 'maxpool_6')  # NB stride here is 1
 
         x = self.conv_layer_bn(x, 1024, (3, 3), self.activation, 'convolution_7')
 

@@ -148,6 +148,9 @@ class DataPreprocessing(object):
             obj["w_oneb"] = obj['xmax_oneb'] - obj['xmin_oneb']
             obj["h_oneb"] = obj['ymax_oneb'] - obj['ymin_oneb']
 
+            assert obj["w_oneb"] > 0
+            assert obj["h_oneb"] > 0
+
             assert (obj[xmin_netin] <= obj[xmax_netin]), self.compare_error_string.format(xmin_netin, xmax_netin, obj[xmin_netin],
                                                                                           obj[xmax_netin], obj)
             assert (obj[ymin_netin] <= obj[ymax_netin]), self.compare_error_string.format(ymin_netin, ymax_netin, obj[ymin_netin],

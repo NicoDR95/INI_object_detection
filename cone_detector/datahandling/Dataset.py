@@ -41,18 +41,23 @@ class Dataset(object):
 
         for ann in filelist:
             img = {'object': []}
+            file_to_parse = self.base_path + "/" + ann
 
-            tree = ET.parse(self.base_path + "/" + ann)
+
+            #print("file_to_parse", file_to_parse)
+            tree = ET.parse(file_to_parse)
 
             for elem in tree.iter():
                 if 'filename' in elem.tag:
                     img_anns += [img]
                     img['filename'] = elem.text
                     # img['image_data'] = self.read_image_from_file(img['filename'])
+
                 if 'width' in elem.tag:
                     img['width'] = int(elem.text)
                 if 'height' in elem.tag:
                     img['height'] = int(elem.text)
+
                 if 'object' in elem.tag or 'part' in elem.tag:
                     obj = {}
 

@@ -96,7 +96,7 @@ class NetworkBase(object):
 
         num_entries = reduce(lambda x, y: x * y, shape)
 
-        use_float16 = True
+        use_float16 = False
         use_bfloat16 = False
         '''if 8 <= width <= 10:
             use_float16 = True
@@ -128,8 +128,9 @@ class NetworkBase(object):
                 max_value_clip[point] = max_value / shift_python[point]
                 shift_tf = tf.constant(shift_python[point], dtype=variable.dtype)
                 shifts.append(shift_tf)
-
-            shifts.append(tf.constant(2.0 ** (width - p_end - 1), dtype=variable.dtype))
+                
+            #actually equivalent to appending 2**0 = 1
+            shifts.append(tf.constant(2.0 ** (width - p_end + 1), dtype=variable.dtype))
             shifts = tf.stack(shifts)
 
             if overflow_threshold_input == 0.0:
@@ -216,11 +217,12 @@ class NetworkBase(object):
             biases = self.quantize_variable(biases, (out_ch,), width=self.parameters.fixed_point_width_weights)
             x = tf.nn.bias_add(x, biases)
 
-        x = self.quantize_variable(x, shape, width=self.parameters.fixed_point_width_activation)
+
+        x = self.quantize_variable(x, shape, width=self.parameters.fixed_point_width_activ)
         return x
 
     def conv_layer_bn_before_relu_quantized(self, x, out_ch, kernel, activation_func, name):
-        x = self.get_quantized_conv(x, out_ch, kernel, name)
+        x = self.get_quantized_conv(x, out_ch, kernel, name,  add_biases=False)
 
         x = tf.layers.batch_normalization(inputs=x, training=self.train_flag_ph, momentum=0.99, epsilon=0.001, center=True,
                                           scale=True, name=name + '_bn')

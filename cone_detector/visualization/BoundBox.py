@@ -10,7 +10,20 @@ class BoundBox(tuple):
     __slots__ = []
 
     def __new__(cls, xmin, xmax, ymin, ymax, probs, class_type, conf):
-        area = (ymax - ymin) * (xmax - xmin)
+
+        y_diff = ymax - ymin
+        x_diff = xmax - xmin
+
+        if y_diff < 0:
+            log.warn("Negative y diff {}".format(y_diff))
+
+        if y_diff < 0:
+            log.warn("Negative x diff {}".format(x_diff))
+
+        area = y_diff * x_diff
+
+
+
 
         # Safety for avoiding weird results at network output
         if area <= 0:
@@ -39,7 +52,7 @@ class BoundBox(tuple):
 
         inters_area = inters_width * inters_height
 
-        if inters_area <= 0:
+        if inters_area <= 0 or self.area == 0 or box.area == 0:
             iou = 0.0
         else:
             try:
@@ -49,7 +62,7 @@ class BoundBox(tuple):
                 log.error("inters_area {}".format(inters_area))
                 log.error("self.area {}".format(self.area))
                 log.error("box.area {}".format(box.area))
-                log.error("inters_x0 {} inters_x1 {} inters_y0 {} inters_y1 {}".format(inters_x0, inters_x1, inters_y0, inters_y1))
+                log.error("inters_x0 {} inters_x1 {} inters_y0 {} inters_y1 {}".format(inters_xmin, inters_xmax, inters_ymin, inters_ymax))
                 raise ZeroDivisionError
 
         return iou

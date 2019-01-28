@@ -1,5 +1,5 @@
 import logging
-
+import math
 import cv2
 import numpy as np
 import tensorflow as tf
@@ -26,6 +26,7 @@ class Accuracy(object):
         read_images = list()
         read_pure_cv2_images = list()
         read_ground_truths = list()
+
         for image_entry in images:
             image_path = path + image_entry['filename']
             # Ground truth is a list of boxes
@@ -49,6 +50,7 @@ class Accuracy(object):
             read_ground_truths.append(image_boxes)
             # Returns a list of dicts, each is a cone
             image, pure_cv2_image = self.preprocessor.read_image(image_path=image_path)
+            #image = self.preprocessor.normalize(image)
             read_images.append(image)
             read_pure_cv2_images.append(pure_cv2_image)
 
@@ -73,11 +75,16 @@ class Accuracy(object):
         overall_pred_obj = 0
         overall_real_obj = 0
         num_images = len(valid_set_anns)
-        num_batches = num_images / self.parameters.batch_size
 
-        batch_ranges = np.linspace(0, num_images, num_batches, dtype=np.int)
-        batch_ranges[-1] = num_images  # to ensure there is no error due to linspace roundup
-        resulting_num_batches = len(batch_ranges) - 1
+        num_batches = math.ceil(num_images / self.parameters.batch_size)
+
+
+
+       # print("valid_set_anns",valid_set_anns)
+       # print("num_batches", num_batches)
+        batch_ranges = np.linspace(0, num_images, num_batches, dtype=np.int, endpoint=False).tolist()
+        batch_ranges.append(num_images)  # to ensure there is no error due to linspace roundup
+        resulting_num_batches = len(batch_ranges) -1
 
         log.info("Computing accuracy...")
         for batch_range_idx in range(resulting_num_batches):
@@ -201,6 +208,8 @@ class Accuracy(object):
         tot_pred_obj_batch = 0
         tot_real_obj_batch = 0
 
+
+
         for image_idx, net_output in enumerate(net_output_batch):
 
             image_ground_truth = read_ground_truths[image_idx]
@@ -214,19 +223,28 @@ class Accuracy(object):
 
             unmatched_pred_indexes = list(range(len(net_output)))
 
+            #for pp in net_output:
+            #    print(pp.conf)
+
             for real_box in image_ground_truth:
 
                 for list_idx, pred_box_idx in enumerate(unmatched_pred_indexes):
 
                     pred_box = net_output[pred_box_idx]
 
+
+
                     if pred_box.class_type == real_box.class_type:
                         iou_pred_real = pred_box.iou(real_box)
 
-                        if iou_pred_real >= iou_accuracy_thr :
+                        if iou_pred_real >= iou_accuracy_thr:
                             true_positives_image = true_positives_image + 1
+                            #we break so it is fine to pop directly on the list
                             unmatched_pred_indexes.pop(list_idx)
                             break
+
+
+
 
             assert (true_positives_image <= len(image_ground_truth))
             assert (true_positives_image <= len(net_output))
