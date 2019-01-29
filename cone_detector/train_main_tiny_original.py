@@ -27,7 +27,7 @@ log = logging.getLogger()
 
 
 # ~~~~~~~~~ Directories for training ~~~~~~~~~
-run_name = 'proteins_augmented_4cluster_nodecay_q16a_q8w_resize'
+run_name = 'proteins'
 run_index = 1
 
 ws_root = r"C:\Users\Alessandro\Google Drive\Documents\Python\DL\amz\cone_detector\\"
@@ -110,10 +110,10 @@ output_w = 16
 batch_size = 16
 store_batch_y = True
 n_epochs = 10000
-scale_coor = 1.0
-scale_noob = 1.0
+scale_coor = 4.0
+scale_noob = 2.0
 scale_conf = 5.0
-scale_proob = 1.0
+scale_proob = 1.5
 data_preprocessing_normalize = 256.0
 tf_device = "/gpu:0"
 debug = True
@@ -183,10 +183,10 @@ max_iter = 1000  # Maximum number of iterations of the k-means algorithm for a s
 # ~~~~~~~~~ Class settings ~~~~~~~~~
 parameters_type = Parameters
 dataset_parser_type = Dataset
-network_type = TinyYoloNoPoolQuantized
+network_type = TinyYoloOnProteinsQuantized
 data_preprocessor_type = DataPreprocessing
 batch_generator_type = MultiProcessBatchGenerator
-loss_type = YoloLossOptimized
+loss_type = YoloLossCrossEntropyProb
 optimizer_type = Optimizer
 pipeline_type = TrainPipeline
 visualizer_type = Visualization

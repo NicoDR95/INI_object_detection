@@ -114,7 +114,7 @@ class YoloLossCrossEntropyProb(object):
 
             total_area_grid = true_box_area_grid + pred_box_area_grid - intersect_area_grid
 
-            iou_scores = tf.truediv(intersect_area_grid, total_area_grid)
+            iou_scores = pred_box_conf*tf.truediv(intersect_area_grid, total_area_grid)
 
             max_iou = tf.reduce_max(iou_scores, [3], True)
 
