@@ -1,3 +1,4 @@
+import numpy as np
 class Parameters(object):
     def __init__(self,
                  n_classes,
@@ -133,3 +134,16 @@ class Parameters(object):
         self.print_sel_p = print_sel_p
         self.tf_device = tf_device
         self.true_values_shape = [None, output_h, output_w, n_anchors, 4 + 1 + n_classes + 2]
+
+
+        anchors_w = list()
+        anchors_h = list()
+        for b in range(n_anchors):
+            sel_anchor_w = anchors[2 * b + 0]
+            anchors_w.append(sel_anchor_w)
+
+            sel_anchor_h = anchors[2 * b + 1]
+            anchors_h.append(sel_anchor_h)
+
+        self.anchors_h = np.array(anchors_h, dtype=np.float32)
+        self.anchors_w = np.array(anchors_w, dtype=np.float32)

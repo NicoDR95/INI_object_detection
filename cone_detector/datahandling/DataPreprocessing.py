@@ -86,6 +86,7 @@ class DataPreprocessing(object):
 
         netin = "_netin"
         oneb = "_oneb"
+        grid = "_grid"
         xmin_netin = "xmin" + netin
         ymin_netin = 'ymin' + netin
         xmax_netin = "xmax" + netin
@@ -130,6 +131,8 @@ class DataPreprocessing(object):
             for attr in ['xmin', 'xmax']:
                 obj[attr + oneb] = obj[attr] / image_width
                 obj[attr + netin] = obj[attr + oneb] * input_w
+                obj[attr + grid] = obj[attr] * output_w / image_width
+
                 try:
                     assert (0 <= obj[attr + netin] <= input_w)
                 except AssertionError:
@@ -138,7 +141,7 @@ class DataPreprocessing(object):
             for attr in ['ymin', 'ymax']:
                 obj[attr + oneb] = obj[attr] / image_height
                 obj[attr + netin] = obj[attr + oneb] * input_h
-
+                obj[attr + grid] = obj[attr] * output_h / image_height
                 try:
                     assert (0 <= obj[attr + netin] <= input_h)
                 except AssertionError:

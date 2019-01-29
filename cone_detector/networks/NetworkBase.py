@@ -89,8 +89,7 @@ class NetworkBase(object):
                                   )
         return self.quantize_variable(weights, shape, width=self.parameters.fixed_point_width_weights)
 
-    # TODO add to params
-    # TODO CHANGE TO 16 NICOLO
+
     def quantize_variable(self, variable, shape, width):
         name = variable.name[:-2]
 

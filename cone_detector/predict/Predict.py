@@ -14,18 +14,8 @@ class Predict(object):
         self.preprocessor = preprocessor
         self.network_loaded = False
         self.network = network
-        anchors = self.parameters.anchors
-        anchors_w = list()
-        anchors_h = list()
-        for b in range(self.parameters.n_anchors):
-            sel_anchor_w = anchors[2 * b + 0]
-            anchors_w.append(sel_anchor_w)
-
-            sel_anchor_h = anchors[2 * b + 1]
-            anchors_h.append(sel_anchor_h)
-
-        self.anchors_h = np.array(anchors_h, dtype=np.float32)
-        self.anchors_w = np.array(anchors_w, dtype=np.float32)
+        self.anchors_h = self.parameters.anchors_h
+        self.anchors_w = self.parameters.anchors_w
 
     # @measure_time
     def network_output_pipeline(self, images, pure_cv2_images, train_sess=None):

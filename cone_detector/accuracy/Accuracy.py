@@ -1,5 +1,6 @@
 import logging
 import math
+
 import cv2
 import numpy as np
 import tensorflow as tf
@@ -7,6 +8,7 @@ import tensorflow as tf
 from visualization.BoundBox import BoundBox
 
 log = logging.getLogger()
+import time
 
 
 class Accuracy(object):
@@ -20,6 +22,7 @@ class Accuracy(object):
         self.max_mean_f1_score = 0
         self.max_overall_F1_score = 0
         self.summary_writer = tf.summary.FileWriter(self.parameters.tensorboard_dir)
+        self.batch_time = 0
 
     # @measure_time
     def read_images_batch(self, images, path):
@@ -50,7 +53,7 @@ class Accuracy(object):
             read_ground_truths.append(image_boxes)
             # Returns a list of dicts, each is a cone
             image, pure_cv2_image = self.preprocessor.read_image(image_path=image_path)
-            #image = self.preprocessor.normalize(image)
+            # image = self.preprocessor.normalize(image)
             read_images.append(image)
             read_pure_cv2_images.append(pure_cv2_image)
 
@@ -78,15 +81,14 @@ class Accuracy(object):
 
         num_batches = math.ceil(num_images / self.parameters.batch_size)
 
-
-
-       # print("valid_set_anns",valid_set_anns)
-       # print("num_batches", num_batches)
+        # print("valid_set_anns",valid_set_anns)
+        # print("num_batches", num_batches)
         batch_ranges = np.linspace(0, num_images, num_batches, dtype=np.int, endpoint=False).tolist()
         batch_ranges.append(num_images)  # to ensure there is no error due to linspace roundup
-        resulting_num_batches = len(batch_ranges) -1
+        resulting_num_batches = len(batch_ranges) - 1
 
-        log.info("Computing accuracy...")
+        log.info("Computing accuracy with {} batches (batch size = {})".format(resulting_num_batches,self.parameters.batch_size))
+        self.batch_time = 0
         for batch_range_idx in range(resulting_num_batches):
             images = valid_set_anns[batch_ranges[batch_range_idx]:batch_ranges[batch_range_idx + 1]]
 
@@ -131,6 +133,9 @@ class Accuracy(object):
         except ZeroDivisionError:
             overall_F1_score = 0
 
+        frame_time = self.batch_time / num_images
+        fps = 1 / frame_time
+
         log.info("There are {} images in the validation set".format(len(valid_set_anns)))
         log.info("The following values are obtained with conf_threshold={}, IoU_threshold={} IoU_accuracy_threshold={}".format(conf_thr,
                                                                                                                                self.parameters.iou_threshold,
@@ -146,6 +151,7 @@ class Accuracy(object):
         log.info("The overall precision is: {}".format(overall_precision))
         log.info("The overall recall is:    {}".format(overall_recall))
         log.info("The overall F1 score is:  {}".format(overall_F1_score))
+        log.info("Validation required {} overall, {:.2f} per frame, {:.2f} FPS".format(self.batch_time, frame_time, fps))
 
         if training is True and epoch_finished is True:
             self.send_to_tf_summary(step, mean_precision, mean_recall, mean_F1_score, overall_precision, overall_recall, overall_F1_score)
@@ -185,8 +191,9 @@ class Accuracy(object):
             net_output_batch = self.prediction.network_output_pipeline(images=read_images, pure_cv2_images=read_pure_cv2_images,
                                                                        train_sess=train_sess)
         elif fsg_accuracy_mode is False:
+            batch_time_start = time.time()
             net_output_batch = self.prediction.network_output_pipeline(images=read_images, pure_cv2_images=read_pure_cv2_images)
-
+            self.batch_time = time.time() + self.batch_time - batch_time_start
         else:
             if self.parameters.batch_size != 1:
                 raise AttributeError("FSG mode supports only batch size of 1")
@@ -208,8 +215,6 @@ class Accuracy(object):
         tot_pred_obj_batch = 0
         tot_real_obj_batch = 0
 
-
-
         for image_idx, net_output in enumerate(net_output_batch):
 
             image_ground_truth = read_ground_truths[image_idx]
@@ -223,7 +228,7 @@ class Accuracy(object):
 
             unmatched_pred_indexes = list(range(len(net_output)))
 
-            #for pp in net_output:
+            # for pp in net_output:
             #    print(pp.conf)
 
             for real_box in image_ground_truth:
@@ -232,19 +237,14 @@ class Accuracy(object):
 
                     pred_box = net_output[pred_box_idx]
 
-
-
                     if pred_box.class_type == real_box.class_type:
                         iou_pred_real = pred_box.iou(real_box)
 
                         if iou_pred_real >= iou_accuracy_thr:
                             true_positives_image = true_positives_image + 1
-                            #we break so it is fine to pop directly on the list
+                            # we break so it is fine to pop directly on the list
                             unmatched_pred_indexes.pop(list_idx)
                             break
-
-
-
 
             assert (true_positives_image <= len(image_ground_truth))
             assert (true_positives_image <= len(net_output))
