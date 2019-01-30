@@ -74,7 +74,7 @@ class NetworkBase(object):
 
         return tf.logical_and(max_overflow, min_overflow)
 
-    def get_quantized_kernel(self, shape, name):
+    def get_quantized_kernel(self, shape,weight_precision, name):
         initializer = tf.contrib.layers.xavier_initializer()
 
         with tf.device("/cpu:0"):
@@ -87,7 +87,7 @@ class NetworkBase(object):
                                   variable_def=None,
                                   dtype=tf.float32
                                   )
-        return self.quantize_variable(weights, shape, width=self.parameters.fixed_point_width_weights)
+        return self.quantize_variable(weights, shape, width=weight_precision)
 
     # TODO add to params
     # TODO CHANGE TO 16 NICOLO
@@ -195,9 +195,9 @@ class NetworkBase(object):
 
         return quantized_variable
 
-    def get_quantized_conv(self, x, out_ch, kernel, name, add_biases=False):
+    def get_quantized_conv(self, x, out_ch, kernel, name, weight_precision, add_biases=False):
         kernel_shape = list(kernel) + [int(x.shape[3]), out_ch]
-        kernels = self.get_quantized_kernel(kernel_shape, name)
+        kernels = self.get_quantized_kernel(kernel_shape,weight_precision, name)
 
         x = tf.nn.conv2d(
             input=x,
@@ -214,15 +214,15 @@ class NetworkBase(object):
 
         if add_biases:
             biases = tf.Variable(-1 * np.ones(shape=(out_ch,)), dtype=tf.float32)
-            biases = self.quantize_variable(biases, (out_ch,), width=self.parameters.fixed_point_width_weights)
+            biases = self.quantize_variable(biases, (out_ch,), width=weight_precision)
             x = tf.nn.bias_add(x, biases)
 
 
         x = self.quantize_variable(x, shape, width=self.parameters.fixed_point_width_activ)
         return x
 
-    def conv_layer_bn_before_relu_quantized(self, x, out_ch, kernel, activation_func, name):
-        x = self.get_quantized_conv(x, out_ch, kernel, name,  add_biases=False)
+    def conv_layer_bn_before_relu_quantized(self, x, out_ch, kernel, activation_func,weight_precision, name):
+        x = self.get_quantized_conv(x, out_ch, kernel, name,weight_precision,  add_biases=False)
 
         x = tf.layers.batch_normalization(inputs=x, training=self.train_flag_ph, momentum=0.99, epsilon=0.001, center=True,
                                           scale=True, name=name + '_bn')
@@ -234,7 +234,7 @@ class NetworkBase(object):
     def detector_layer_quantized(self, x):
         # Last layer without batch normalization and with linear activation (None argument)
         x = self.get_quantized_conv(x=x, out_ch=self.parameters.n_anchors * self.n_output_values_per_box, kernel=(1, 1),
-                                    name='det_q', add_biases=True)
+                                    name='det_q',weight_precision=16, add_biases=True)
 
         return x
 
