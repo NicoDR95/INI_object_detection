@@ -230,10 +230,10 @@ class NetworkBase(object):
 
         return x
 
-    def detector_layer_quantized(self, x):
+    def detector_layer_quantized(self, x, precision):
         # Last layer without batch normalization and with linear activation (None argument)
         x = self.get_quantized_conv(x=x, out_ch=self.parameters.n_anchors * self.n_output_values_per_box, kernel=(1, 1),
-                                    name='det_q',weight_precision=16, add_biases=True)
+                                    name='det_q',weight_precision=precision, add_biases=True)
 
         return x
 
@@ -314,7 +314,7 @@ class NetworkBase(object):
         return tf.nn.leaky_relu(x, name="relu")
 
     def set_placeholders(self):
-        # with tf.device("/gpu:0"):
+        # with tf.device("/gpu:1"):
         # Placeholder for input batch of images
         log.info("Creating input placeholder...")
         self.input_ph = tf.placeholder(shape=[None, self.parameters.input_h, self.parameters.input_w, self.parameters.input_depth],

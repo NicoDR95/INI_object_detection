@@ -188,8 +188,10 @@ class Accuracy(object):
         read_images, read_pure_cv2_images, read_ground_truths = self.read_images_batch(images=images, path=path)
 
         if training is True:
+            batch_time_start = time.time()
             net_output_batch = self.prediction.network_output_pipeline(images=read_images, pure_cv2_images=read_pure_cv2_images,
                                                                        train_sess=train_sess)
+            self.batch_time = time.time() + self.batch_time - batch_time_start
         elif fsg_accuracy_mode is False:
             batch_time_start = time.time()
             net_output_batch = self.prediction.network_output_pipeline(images=read_images, pure_cv2_images=read_pure_cv2_images)
@@ -206,7 +208,9 @@ class Accuracy(object):
                 log.warn("Batch size larger than 1 in visualization mode, only first batch image visualized")
             image = read_images[0]
             net_output = net_output_batch[0]
+            batch_time_start = time.time()
             self.visualize_accuracy_output(image, net_output)
+            self.batch_time = time.time() + self.batch_time - batch_time_start
 
         batch_precisions = list()
         batch_recalls = list()

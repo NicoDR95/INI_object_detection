@@ -15,29 +15,29 @@ class TinyYoloOnProteinsQuantized(NetworkBase):
 
     def network_build(self, x):
 
-        x = self.conv_layer_bn_before_relu_quantized(x, 16, (3, 3), self.activation, 16, 'conv1')
+        x = self.conv_layer_bn_before_relu_quantized(x, 16, (3, 3), self.activation, 2, 'conv1')
 
-        x = self.conv_layer_bn_before_relu_quantized(x, 32, (3, 3), self.activation, 8, 'conv2')
+        x = self.conv_layer_bn_before_relu_quantized(x, 32, (3, 3), self.activation, 2, 'conv2')
         x = self.maxpool_layer(x, (2, 2), (2, 2), 'pool1')
 
-        x = self.conv_layer_bn_before_relu_quantized(x, 64, (3, 3), self.activation, 4, 'conv3')
+        x = self.conv_layer_bn_before_relu_quantized(x, 64, (3, 3), self.activation, 2, 'conv3')
         x = self.maxpool_layer(x, (2, 2), (2, 2), 'pool2')
 
-        x = self.conv_layer_bn_before_relu_quantized(x, 128, (3, 3), self.activation, 4, 'conv4')
+        x = self.conv_layer_bn_before_relu_quantized(x, 128, (3, 3), self.activation, 2, 'conv4')
         x = self.maxpool_layer(x, (2, 2), (2, 2), 'pool3')
 
-        x = self.conv_layer_bn_before_relu_quantized(x, 256, (3, 3), self.activation, 4, 'conv5')
+        x = self.conv_layer_bn_before_relu_quantized(x, 256, (3, 3), self.activation, 2, 'conv5')
         x = self.maxpool_layer(x, (2, 2), (2, 2), 'pool4')
 
-        x = self.conv_layer_bn_before_relu_quantized(x, 512, (3, 3), self.activation, 4,'conv6')
+        x = self.conv_layer_bn_before_relu_quantized(x, 512, (3, 3), self.activation, 2,'conv6')
         x = self.maxpool_layer(x, (2, 2), (2, 2), 'pool5')
 
-        x = self.conv_layer_bn_before_relu_quantized(x, 1024, (3, 3), self.activation, 4, 'conv7')
+        x = self.conv_layer_bn_before_relu_quantized(x, 1024, (3, 3), self.activation, 2, 'conv7')
 
-        x = self.conv_layer_bn_before_relu_quantized(x, 1024, (3, 3), self.activation, 16, 'conv8')
+        x = self.conv_layer_bn_before_relu_quantized(x, 1024, (3, 3), self.activation, 2, 'conv8')
 
         # Last layer without batch normalization and with linear activation
-        x = self.detector_layer_quantized(x)
+        x = self.detector_layer_quantized(x, 2)
 
         x = self.reshape_output_layer(x)
 

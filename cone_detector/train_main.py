@@ -9,7 +9,7 @@ from datahandling.MultiProcessBatchGenerator import MultiProcessBatchGenerator
 from datahandling.DataAugmentation import DataAugmentation
 from datahandling.DataPreprocessing import DataPreprocessing
 from datahandling.Dataset import Dataset
-from networks.TinyYoloOnProteins import TinyYoloOnProteins
+from networks.TinyYoloOnProteinsQuantized import TinyYoloOnProteinsQuantized
 from predict.Predict import Predict
 from training.Optimizer import Optimizer
 from training.TrainPipeline import TrainPipeline
@@ -23,33 +23,36 @@ log = logging.getLogger()
 
 
 # ~~~~~~~~~ Directories for training ~~~~~~~~~
-run_name = 'sanity_check'
+run_name = 'proteins_mixed_extreme_all3_one2'
 run_index = 1
 
-ws_root = r"C:\Users\Alessandro\Google Drive\Documents\Python\DL\amz\cone_detector\\"
-data_root = r"D:\DL\datasets\cones_dataset2018\\"
+ws_root = "/home/asa/workspaces/Pycharm/yolo/"
+data_root = ws_root + "dataset/cones_dataset2018/"
 
 
-images_dir = data_root + r'train_images\\'
-annotations_dir = data_root + r'\\train_annotations\\'
+train_image_dir = data_root + 'train_images/'
+train_annotations_dir = data_root + '/train_annotations/'
 train_annotations_filelist = None
 
-saved_model_dir = 'D:\\DL\\models\\cones_dataset2018\\' + run_name + '\\run_{}\\'.format(run_index)
+images_dir = "/home/asa/workspaces/Pycharm/yolo/dataset/cones_dataset2018/train_images"
+annotations_dir = "/home/asa/workspaces/Pycharm/yolo/dataset/cones_dataset2018/train_annotations"
 
-aug_annotations_dir = data_root + r'empty\\'  # point to empty folder if you don't want to use augmented data
-aug_images_dir = data_root + r'augmented_images\\'
-all_images_dir = [images_dir, aug_images_dir]
+
+saved_model_dir = ws_root + 'saved_models/' + run_name + '/run_{}/'.format(run_index)
+aug_annotations_dir = data_root + 'empty/'  # point to empty folder if you don't want to use augmented data
+aug_images_dir = data_root + 'augmented_images/'
+all_images_dir = [train_image_dir, aug_images_dir]
 
 # ~~~~~~~~~ Directories for inference ~~~~~~~~~
-checkpoint_number = '174'
+checkpoint_number = '21'
 saved_model_name = run_name
 checkpoint = saved_model_dir + saved_model_name + '-' + checkpoint_number
 metagraph = checkpoint + '.meta'
 
 # ~~~~~~~~~ Directories for validation ~~~~~~~~~
-validation_data_dir = data_root
-validation_images_dir = validation_data_dir + r'validation_images\\'
-validation_annotations_dir = validation_data_dir + r'validation_annotations\\'
+validation_data_dir = ws_root + "dataset/cones_dataset2018/"
+validation_images_dir = validation_data_dir + 'validation_images/'
+validation_annotations_dir = validation_data_dir + 'validation_annotations/'
 validation_annotations_filelist = None
 
 # ~~~~~~~~~ Directories for augmentation ~~~~~~~~~
@@ -70,7 +73,7 @@ test_video_path = test_video_dir + test_video_name
 # ~~~~~~~~~ Directories for anchors ~~~~~~~~~
 annotations_for_anchors = None
 
-# ~~~ General settings ~~~
+# ~~~~~~~~~ General settings ~~~~~~~~~
 training_mode = True
 inference_mode = False
 validation_mode = False
@@ -82,33 +85,34 @@ save_as_graphdef = False
 visualize_dataset = False
 visualize_preprocessed_images = False
 leaky_relu = False
-use_sqrt_loss = False
+use_sqrt_loss = True
 checkpoints_to_keep = 10  # number of chkp you want to keep at any time, older are automatically deleted
 labels_list = ['yellow_cones', 'blue_cones', 'orange_cones']
-#anchors = [0.86, 1.69, 1.44, 2.96, 0.35, 0.66, 2.34, 4.91]
 anchors = [0.86, 1.69, 1.44, 2.96, 0.35, 0.66, 2.34, 4.91]
+# anchors = [0.57, 1.21, 0.85, 1.78, 1.19, 2.50, 1.68, 3.49, 2.48, 5.03]
 loss_filename_print_threshold = 50
-fixed_point_width = 8
+fixed_point_width_weights = 8
+fixed_point_width_activ = 16
 n_classes = 3
 n_anchors = int(len(anchors) / 2)
 input_h = 256
 input_w = 512
 add_fourth_channel = False
 use_grayscale_mask = False
-use_hue_mask = True
+use_hue_mask = False
 visualize_fourth_channel = False  # Use this to visualize if the result on the 4th channel are good
 input_depth = 3
 output_h = 8
 output_w = 16
-batch_size = 8
-store_batch_y = True
+batch_size = 4
+store_batch_y = False
 n_epochs = 10000
 scale_coor = 4.0
 scale_noob = 2.0
 scale_conf = 5.0
 scale_proob = 1.5
-data_preprocessing_normalize = 256
-tf_device = "/gpu:0"
+data_preprocessing_normalize = 256.0
+tf_device = "/gpu:1"
 debug = True
 print_sel_p = False
 learning_rate = 10 ** (-5)
@@ -117,7 +121,7 @@ dropout = [0.0]
 # ~~~~~~~~~ Inference and accuracy settings ~~~~~~~~~
 import_graph_from_metafile = False  # set to true if you intend to run inference on a graph in a meta file
 weights_from_npy = False  # set to true only if using a graph that loads weights from npy files
-keep_small_ones = True  # to avoid avaing big boxes with more cones in one
+keep_small_ones = True   # to avoid avaing big boxes with more cones in one
 car_pov_inference_mode = False
 min_distance_from_top = 200  # put 0 to disenable the contidion
 max_area_distant_obj = 18000  # Put an extremely high value to disenable the condition
@@ -176,7 +180,7 @@ max_iter = 1000  # Maximum number of iterations of the k-means algorithm for a s
 # ~~~~~~~~~ Class settings ~~~~~~~~~
 parameters_type = Parameters
 dataset_parser_type = Dataset
-network_type = TinyYoloOnProteins
+network_type = TinyYoloOnProteinsQuantized
 data_preprocessor_type = DataPreprocessing
 batch_generator_type = MultiProcessBatchGenerator
 loss_type = YoloLossCrossEntropyProb
@@ -253,7 +257,8 @@ if __name__ == "__main__":
                                            car_pov_inference_mode=car_pov_inference_mode,
                                            keep_small_ones=keep_small_ones,
                                            weights_from_npy=weights_from_npy,
-                                           fixed_point_width=fixed_point_width,
+                                           fixed_point_width_weights=fixed_point_width_weights,
+                                           fixed_point_width_activ=fixed_point_width_activ,
                                            print_sel_p=print_sel_p
                                            )
 
