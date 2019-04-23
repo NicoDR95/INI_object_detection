@@ -21,7 +21,6 @@ from visualization.Visualization import Visualization
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger()
 
-
 # ~~~~~~~~~ Directories for training ~~~~~~~~~
 run_name = 'proteins_mixed_extreme_all3_one2'
 run_index = 1
@@ -29,14 +28,12 @@ run_index = 1
 ws_root = "/home/asa/workspaces/Pycharm/yolo/"
 data_root = ws_root + "dataset/cones_dataset2018/"
 
-
 train_image_dir = data_root + 'train_images/'
 train_annotations_dir = data_root + '/train_annotations/'
 train_annotations_filelist = None
 
 images_dir = "/home/asa/workspaces/Pycharm/yolo/dataset/cones_dataset2018/train_images"
 annotations_dir = "/home/asa/workspaces/Pycharm/yolo/dataset/cones_dataset2018/train_annotations"
-
 
 saved_model_dir = ws_root + 'saved_models/' + run_name + '/run_{}/'.format(run_index)
 aug_annotations_dir = data_root + 'empty/'  # point to empty folder if you don't want to use augmented data
@@ -54,6 +51,23 @@ validation_data_dir = ws_root + "dataset/cones_dataset2018/"
 validation_images_dir = validation_data_dir + 'validation_images/'
 validation_annotations_dir = validation_data_dir + 'validation_annotations/'
 validation_annotations_filelist = None
+validation_dict = {"data_dir": validation_data_dir,
+                   "images_dir": validation_images_dir,
+                   "annotations_dir": validation_annotations_dir,
+                   "annotations_filelist": validation_annotations_filelist
+                   }
+
+test_data_dir = ws_root + "dataset/cones_dataset2018/"
+test_images_dir = test_data_dir + 'validation_images/'
+test_annotations_dir = test_data_dir + 'validation_annotations/'
+test_annotations_filelist = None
+test_dict = {"data_dir": test_data_dir,
+             "images_dir": test_images_dir,
+             "annotations_dir": test_annotations_dir,
+             "annotations_filelist": test_annotations_filelist
+             }
+
+performance_dataset_dict = {"validation": validation_dict, "test": test_dict}
 
 # ~~~~~~~~~ Directories for augmentation ~~~~~~~~~
 augmented_image_dir = data_root + r'augmented_images\\'
@@ -121,7 +135,7 @@ dropout = [0.0]
 # ~~~~~~~~~ Inference and accuracy settings ~~~~~~~~~
 import_graph_from_metafile = False  # set to true if you intend to run inference on a graph in a meta file
 weights_from_npy = False  # set to true only if using a graph that loads weights from npy files
-keep_small_ones = True   # to avoid avaing big boxes with more cones in one
+keep_small_ones = True  # to avoid avaing big boxes with more cones in one
 car_pov_inference_mode = False
 min_distance_from_top = 200  # put 0 to disenable the contidion
 max_area_distant_obj = 18000  # Put an extremely high value to disenable the condition
@@ -266,15 +280,21 @@ if __name__ == "__main__":
                                                    base_path=annotations_dir,
                                                    annotations_filelist=train_annotations_filelist)
 
-        validation_dataset_parser = dataset_parser_type(parameters=train_parameters,
-                                                        base_path=validation_annotations_dir,
-                                                        annotations_filelist=validation_annotations_filelist)
+        test_datasets = list()
+        for dataset_name, dataset in performance_dataset_dict.items():
+            new_parser = dataset_parser_type(parameters=train_parameters,
+                                             base_path=dataset["annotations_dir"],
+                                             annotations_filelist=dataset["annotations_filelist"],
+                                             images_path=dataset["images_dir"])
+
+            test_datasets.append({"dataset_name" :dataset_name, "dataset": new_parser })
 
         aug_dataset_parser = dataset_parser_type(parameters=train_parameters,
                                                  base_path=aug_annotations_dir,
                                                  annotations_filelist=aug_annotations_filelist)
 
-        cones_dataset_parser = [train_dataset_parser, aug_dataset_parser]  # Put here ll the dataset you intend to train on toghether
+        cones_dataset_parser = [train_dataset_parser,
+                                aug_dataset_parser]  # Put here ll the dataset you intend to train on toghether
         single_dataset_parser = train_dataset_parser  # Put here the single set on which you want to perform aumentation or acccuracy or anchors k mean
 
         data_preprocessor = data_preprocessor_type(parameters=train_parameters)
@@ -297,7 +317,7 @@ if __name__ == "__main__":
 
         accuracy = accuracy_type(parameters=train_parameters,
                                  prediction=predictor,
-                                 dataset=validation_dataset_parser,
+                                 datasets=new_parser,
                                  preprocessor=data_preprocessor,
                                  visualize=visualize)
 

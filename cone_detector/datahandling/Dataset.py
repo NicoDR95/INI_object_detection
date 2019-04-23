@@ -9,10 +9,11 @@ log = logging.getLogger()
 
 class Dataset(object):
 
-    def __init__(self, parameters, base_path, annotations_filelist):
+    def __init__(self, parameters, base_path, annotations_filelist, images_path):
         self.parameters = parameters
         self.base_path = base_path
         self.annotations_filelist = annotations_filelist
+        self.images_path = images_path
 
     def get_dataset_dict(self):
 

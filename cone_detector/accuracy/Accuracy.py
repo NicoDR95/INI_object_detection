@@ -13,14 +13,14 @@ import time
 
 class Accuracy(object):
 
-    def __init__(self, parameters, prediction, dataset, preprocessor, visualize):
+    def __init__(self, parameters, prediction, datasets, preprocessor, visualize):
         self.parameters = parameters
         self.prediction = prediction
-        self.dataset = dataset
+        self.datasets = datasets
         self.preprocessor = preprocessor
         self.visualize = visualize
-        self.max_mean_f1_score = 0
-        self.max_overall_F1_score = 0
+        self.max_mean_f1_score = dict()
+        self.max_overall_F1_score = dict()
         self.summary_writer = tf.summary.FileWriter(self.parameters.tensorboard_dir)
         self.batch_time = 0
 
@@ -61,14 +61,25 @@ class Accuracy(object):
 
     # @measure_time
     def run_and_get_accuracy(self, train_sess=None, step=None, epoch_finished=True):
-        validation_images_dir = self.parameters.validation_images_dir
+
+        for dataset_dict in self.datasets:
+            dataset_name = dataset_dict["dataset_name"]
+            dataset  = dataset_dict["dataset"] 
+            log.info("\n \n \n Running accuracy on dataset {} ".format(dataset_name))
+            self.run_accuracy_on_dataset(dataset_name, dataset, train_sess, step, epoch_finished)
+
+        if self.parameters.training is True and epoch_finished is True:
+            self.send_to_tf_summary_global(step)
+
+    def run_accuracy_on_dataset(self, dataset_name, dataset, train_sess=None, step=None, epoch_finished=True):
+        # images_dir = dataset.images_dir
 
         conf_thr = self.parameters.conf_threshold
         iou_accuracy_thr = self.parameters.iou_accuracy_thr
 
         training = self.parameters.training
         fsg_accuracy_mode = self.parameters.fsg_accuracy_mode
-        valid_set_anns = self.dataset.get_dataset_dict()
+        valid_set_anns = dataset.get_dataset_dict()
 
         all_precisions = []
         all_recalls = []
@@ -87,7 +98,9 @@ class Accuracy(object):
         batch_ranges.append(num_images)  # to ensure there is no error due to linspace roundup
         resulting_num_batches = len(batch_ranges) - 1
 
-        log.info("Computing accuracy with {} batches (batch size = {})".format(resulting_num_batches,self.parameters.batch_size))
+        log.info("Dataset {} -  Computing accuracy with {} batches (batch size = {})".format(dataset_name,
+                                                                                             resulting_num_batches,
+                                                                                             self.parameters.batch_size))
         self.batch_time = 0
         for batch_range_idx in range(resulting_num_batches):
             images = valid_set_anns[batch_ranges[batch_range_idx]:batch_ranges[batch_range_idx + 1]]
@@ -97,7 +110,7 @@ class Accuracy(object):
                 training,
                 fsg_accuracy_mode,
                 train_sess,
-                validation_images_dir,
+                dataset.images_path,
                 iou_accuracy_thr)
 
             all_precisions.extend(batch_precisions)
@@ -137,11 +150,15 @@ class Accuracy(object):
         fps = 1 / frame_time
 
         log.info("There are {} images in the validation set".format(len(valid_set_anns)))
-        log.info("The following values are obtained with conf_threshold={}, IoU_threshold={} IoU_accuracy_threshold={}".format(conf_thr,
-                                                                                                                               self.parameters.iou_threshold,
-                                                                                                                               iou_accuracy_thr))
-        log.info("There were {} objects in the dataset, total predictions are {} and {} are correct".format(overall_real_obj, overall_pred_obj,
-                                                                                                            overall_true_positives))
+        log.info("The following values are obtained with conf_threshold={}, IoU_threshold={} IoU_accuracy_threshold={}".format(
+            conf_thr,
+            self.parameters.iou_threshold,
+            iou_accuracy_thr))
+
+        log.info("There were {} objects in dataset {}, total predictions are {} and {} are correct".format(overall_real_obj,
+                                                                                                           dataset_name,
+                                                                                                           overall_pred_obj,
+                                                                                                           overall_true_positives))
         log.info("The mean precision is: {}".format(mean_precision))
         log.info("The mean recall is:    {}".format(mean_recall))
         log.info("The mean F1 score is:  {} ".format(mean_F1_score))
@@ -154,28 +171,41 @@ class Accuracy(object):
         log.info("Validation required {} overall, {:.2f} per frame, {:.2f} FPS".format(self.batch_time, frame_time, fps))
 
         if training is True and epoch_finished is True:
-            self.send_to_tf_summary(step, mean_precision, mean_recall, mean_F1_score, overall_precision, overall_recall, overall_F1_score)
+            self.send_to_tf_summary_dataset(step, mean_precision, mean_recall, mean_F1_score, overall_precision, overall_recall, overall_F1_score, dataset_name)
 
     # @measure_time
-    def send_to_tf_summary(self, step, mean_precision, mean_recall, mean_F1_score, overall_precision, overall_recall, overall_F1_score):
+    def send_to_tf_summary_dataset(self, step, mean_precision, mean_recall, mean_F1_score, overall_precision, overall_recall, overall_F1_score, dataset_name):
+        try:
+            if self.max_mean_f1_score["dataset_name"] < mean_F1_score:
+                self.max_mean_f1_scoree["dataset_name"] = mean_F1_score
+        except KeyError:
+            self.max_mean_f1_scoree["dataset_name"] = mean_F1_score
 
-        if self.max_mean_f1_score < mean_F1_score:
-            self.max_mean_f1_score = mean_F1_score
-
-        if self.max_overall_F1_score < overall_F1_score:
-            self.max_overall_F1_score = overall_F1_score
+        try:
+            if self.max_overall_F1_scoree["dataset_name"] < overall_F1_score:
+                self.max_overall_F1_scoree["dataset_name"] = overall_F1_score
+        except KeyError:
+            self.max_overall_F1_scoree["dataset_name"] = overall_F1_score
 
         summary = tf.Summary()
 
-        summary.value.add(tag='mean_precision', simple_value=mean_precision)
-        summary.value.add(tag='mean_recall', simple_value=mean_recall)
-        summary.value.add(tag='mean_F1_score', simple_value=mean_F1_score)
-        summary.value.add(tag='max_mean_f1_score', simple_value=self.max_mean_f1_score)
+        summary.value.add(tag=dataset_name + " " + 'mean_precision', simple_value=mean_precision)
+        summary.value.add(tag=dataset_name + " " + 'mean_recall', simple_value=mean_recall)
+        summary.value.add(tag=dataset_name + " " + 'mean_F1_score', simple_value=mean_F1_score)
+        summary.value.add(tag=dataset_name + " " + 'max_mean_f1_score', simple_value=self.max_mean_f1_score["dataset_name"])
 
-        summary.value.add(tag='overall_precision', simple_value=overall_precision)
-        summary.value.add(tag='overall_recall', simple_value=overall_recall)
-        summary.value.add(tag='overall_F1_score', simple_value=overall_F1_score)
-        summary.value.add(tag='max_overall_F1_score', simple_value=self.max_overall_F1_score)
+        summary.value.add(tag=dataset_name + " " + 'overall_precision', simple_value=overall_precision)
+        summary.value.add(tag=dataset_name + " " + 'overall_recall', simple_value=overall_recall)
+        summary.value.add(tag=dataset_name + " " + 'overall_F1_score', simple_value=overall_F1_score)
+        summary.value.add(tag=dataset_name + " " + 'max_overall_F1_score', simple_value=self.max_overall_F1_score["dataset_name"])
+
+        self.summary_writer.add_summary(summary, step)
+        self.summary_writer.flush()
+
+    def send_to_tf_summary_global(self, step):
+
+        summary = tf.Summary()
+
         summary.value.add(tag='Batch_size vs epochs', simple_value=self.parameters.batch_size)
         summary.value.add(tag='Learning rate vs epochs', simple_value=self.parameters.learning_rate)
 
@@ -189,12 +219,14 @@ class Accuracy(object):
 
         if training is True:
             batch_time_start = time.time()
-            net_output_batch = self.prediction.network_output_pipeline(images=read_images, pure_cv2_images=read_pure_cv2_images,
+            net_output_batch = self.prediction.network_output_pipeline(images=read_images,
+                                                                       pure_cv2_images=read_pure_cv2_images,
                                                                        train_sess=train_sess)
             self.batch_time = time.time() + self.batch_time - batch_time_start
         elif fsg_accuracy_mode is False:
             batch_time_start = time.time()
-            net_output_batch = self.prediction.network_output_pipeline(images=read_images, pure_cv2_images=read_pure_cv2_images)
+            net_output_batch = self.prediction.network_output_pipeline(images=read_images,
+                                                                       pure_cv2_images=read_pure_cv2_images)
             self.batch_time = time.time() + self.batch_time - batch_time_start
         else:
             if self.parameters.batch_size != 1:
