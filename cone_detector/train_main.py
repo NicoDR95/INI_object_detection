@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger()
 
 # ~~~~~~~~~ Directories for training ~~~~~~~~~
-run_name = 'proteins_mixed_extreme_all3_one2'
+run_name = 'proteins_mixed_testset'
 run_index = 1
 
 ws_root = "/home/asa/workspaces/Pycharm/yolo/"
@@ -59,8 +59,8 @@ validation_dict = {"dataset_name": "validation",
                    }
 
 test_data_dir = ws_root + "dataset/cones_dataset2018/"
-test_images_dir = test_data_dir + 'test_images/'
-test_annotations_dir = test_data_dir + 'test_new_old_distrib_annotations/'
+test_images_dir = test_data_dir + 'test_images_new_definitive/'
+test_annotations_dir = test_data_dir + 'test_annotations_new_old_distrib/'
 test_annotations_filelist = None
 test_dict_1 = {"dataset_name": "test_new_old_distrib",
                "data_dir": test_data_dir,
@@ -70,8 +70,8 @@ test_dict_1 = {"dataset_name": "test_new_old_distrib",
                }
 
 test_data_dir = ws_root + "dataset/cones_dataset2018/"
-test_images_dir = test_data_dir + 'test_images/'
-test_annotations_dir = test_data_dir + 'test_new_fsg_video_annotations/'
+test_images_dir = test_data_dir + 'test_images_new_definitive/'
+test_annotations_dir = test_data_dir + 'test_annotations_new_fsg_video/'
 test_annotations_filelist = None
 test_dict_2 = {"dataset_name": "test_new_fsg_video",
                "data_dir": test_data_dir,
@@ -80,7 +80,7 @@ test_dict_2 = {"dataset_name": "test_new_fsg_video",
                "annotations_filelist": test_annotations_filelist
                }
 
-accuracy_dataset_dict = [validation_dict, test_dict_1, test_dict_1]
+accuracy_dataset_dict = [validation_dict, test_dict_1, test_dict_2]
 
 # ~~~~~~~~~ Directories for augmentation ~~~~~~~~~
 augmented_image_dir = data_root + r'augmented_images\\'
@@ -293,14 +293,14 @@ if __name__ == "__main__":
                                                    base_path=annotations_dir,
                                                    annotations_filelist=train_annotations_filelist)
 
-        test_datasets = list()
-        for dataset in accuracy_dataset_dict.items():
+        accuracy_datasets = list()
+        for dataset in accuracy_dataset_dict:
             new_parser = dataset_parser_type(parameters=train_parameters,
                                              base_path=dataset["annotations_dir"],
                                              annotations_filelist=dataset["annotations_filelist"],
                                              images_path=dataset["images_dir"])
 
-            test_datasets.append({"dataset_name": dataset["dataset_name"] , "dataset": new_parser})
+            accuracy_datasets.append({"dataset_name": dataset["dataset_name"] , "dataset": new_parser})
 
         aug_dataset_parser = dataset_parser_type(parameters=train_parameters,
                                                  base_path=aug_annotations_dir,
@@ -330,7 +330,7 @@ if __name__ == "__main__":
 
         accuracy = accuracy_type(parameters=train_parameters,
                                  prediction=predictor,
-                                 datasets=new_parser,
+                                 datasets=accuracy_datasets,
                                  preprocessor=data_preprocessor,
                                  visualize=visualize)
 
