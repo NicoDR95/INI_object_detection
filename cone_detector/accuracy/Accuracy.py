@@ -64,7 +64,7 @@ class Accuracy(object):
 
         for dataset_dict in self.datasets:
             dataset_name = dataset_dict["dataset_name"]
-            dataset  = dataset_dict["dataset"] 
+            dataset  = dataset_dict["dataset"]
             log.info("\n \n \n Running accuracy on dataset {} ".format(dataset_name))
             self.run_accuracy_on_dataset(dataset_name, dataset, train_sess, step, epoch_finished)
 
