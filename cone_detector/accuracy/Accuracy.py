@@ -176,28 +176,28 @@ class Accuracy(object):
     # @measure_time
     def send_to_tf_summary_dataset(self, step, mean_precision, mean_recall, mean_F1_score, overall_precision, overall_recall, overall_F1_score, dataset_name):
         try:
-            if self.max_mean_f1_score["dataset_name"] < mean_F1_score:
-                self.max_mean_f1_scoree["dataset_name"] = mean_F1_score
+            if self.max_mean_f1_score[dataset_name] < mean_F1_score:
+                self.max_mean_f1_score[dataset_name]  = mean_F1_score
         except KeyError:
-            self.max_mean_f1_scoree["dataset_name"] = mean_F1_score
+            self.max_mean_f1_score[dataset_name]  = mean_F1_score
 
         try:
-            if self.max_overall_F1_scoree["dataset_name"] < overall_F1_score:
-                self.max_overall_F1_scoree["dataset_name"] = overall_F1_score
+            if self.max_overall_F1_score[dataset_name] < overall_F1_score:
+                self.max_overall_F1_score[dataset_name]  = overall_F1_score
         except KeyError:
-            self.max_overall_F1_scoree["dataset_name"] = overall_F1_score
+            self.max_overall_F1_score[dataset_name]  = overall_F1_score
 
         summary = tf.Summary()
 
         summary.value.add(tag=dataset_name + " " + 'mean_precision', simple_value=mean_precision)
         summary.value.add(tag=dataset_name + " " + 'mean_recall', simple_value=mean_recall)
         summary.value.add(tag=dataset_name + " " + 'mean_F1_score', simple_value=mean_F1_score)
-        summary.value.add(tag=dataset_name + " " + 'max_mean_f1_score', simple_value=self.max_mean_f1_score["dataset_name"])
+        summary.value.add(tag=dataset_name + " " + 'max_mean_f1_score', simple_value=self.max_mean_f1_score[dataset_name] )
 
         summary.value.add(tag=dataset_name + " " + 'overall_precision', simple_value=overall_precision)
         summary.value.add(tag=dataset_name + " " + 'overall_recall', simple_value=overall_recall)
         summary.value.add(tag=dataset_name + " " + 'overall_F1_score', simple_value=overall_F1_score)
-        summary.value.add(tag=dataset_name + " " + 'max_overall_F1_score', simple_value=self.max_overall_F1_score["dataset_name"])
+        summary.value.add(tag=dataset_name + " " + 'max_overall_F1_score', simple_value=self.max_overall_F1_score[dataset_name] )
 
         self.summary_writer.add_summary(summary, step)
         self.summary_writer.flush()
