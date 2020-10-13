@@ -1,11 +1,8 @@
 import logging
-from copy import deepcopy
 from math import floor
 
-import numpy as np
-import scipy
-import scipy.misc
 import cv2
+import numpy as np
 
 log = logging.getLogger()
 
@@ -46,7 +43,6 @@ class DataPreprocessing(object):
 
             return image, pure_cv2_image
 
-
     def read_image_and_xml(self, image_annotation):
         image_annotation = image_annotation
         image_objects = image_annotation['object'][:]
@@ -72,15 +68,14 @@ class DataPreprocessing(object):
     def resize_image(self, image_to_resize):
 
         # resized_image = scipy.misc.imresize(image_to_resize, (self.parameters.input_h, self.parameters.input_w))
+        # print(image_to_resize)
         resized_image = cv2.resize(image_to_resize, (self.parameters.input_w, self.parameters.input_h))
 
         resized_image = np.array(resized_image, dtype=np.float32)
         return resized_image
 
-    def resize_image_and_boxes(self, image_to_resize, image_objects, filename):
-        image_height, image_width, image_channels = image_to_resize.shape
-
-        resized_image = self.resize_image(image_to_resize=image_to_resize)
+    def resize_boxes(self, image_to_resize_shape, image_objects, filename):
+        image_height, image_width, image_channels = image_to_resize_shape
 
         image_height = float(image_height)
         image_width = float(image_width)
@@ -91,6 +86,7 @@ class DataPreprocessing(object):
 
         netin = "_netin"
         oneb = "_oneb"
+        grid = "_grid"
         xmin_netin = "xmin" + netin
         ymin_netin = 'ymin' + netin
         xmax_netin = "xmax" + netin
@@ -135,6 +131,8 @@ class DataPreprocessing(object):
             for attr in ['xmin', 'xmax']:
                 obj[attr + oneb] = obj[attr] / image_width
                 obj[attr + netin] = obj[attr + oneb] * input_w
+                obj[attr + grid] = obj[attr] * output_w / image_width
+
                 try:
                     assert (0 <= obj[attr + netin] <= input_w)
                 except AssertionError:
@@ -143,18 +141,23 @@ class DataPreprocessing(object):
             for attr in ['ymin', 'ymax']:
                 obj[attr + oneb] = obj[attr] / image_height
                 obj[attr + netin] = obj[attr + oneb] * input_h
-
+                obj[attr + grid] = obj[attr] * output_h / image_height
                 try:
                     assert (0 <= obj[attr + netin] <= input_h)
                 except AssertionError:
                     log.error(self.attribute_error_string.format(attr, filename, obj[attr + netin], input_h, obj))
 
-            obj["box"] = [obj['xmin_oneb'], obj['ymin_oneb'], obj['xmax_oneb'], obj['ymax_oneb']]
+            obj["box_oneb"] = [obj['xmin_oneb'], obj['ymin_oneb'], obj['xmax_oneb'], obj['ymax_oneb']]
+            obj["w_oneb"] = obj['xmax_oneb'] - obj['xmin_oneb']
+            obj["h_oneb"] = obj['ymax_oneb'] - obj['ymin_oneb']
+
+            assert obj["w_oneb"] > 0
+            assert obj["h_oneb"] > 0
 
             assert (obj[xmin_netin] <= obj[xmax_netin]), self.compare_error_string.format(xmin_netin, xmax_netin, obj[xmin_netin],
-                                                                                         obj[xmax_netin], obj)
+                                                                                          obj[xmax_netin], obj)
             assert (obj[ymin_netin] <= obj[ymax_netin]), self.compare_error_string.format(ymin_netin, ymax_netin, obj[ymin_netin],
-                                                                                         obj[ymax_netin], obj)
+                                                                                          obj[ymax_netin], obj)
             assert (obj[xmin_oneb] <= obj[xmax_oneb]), self.compare_error_string.format(xmin_oneb, xmax_oneb,
                                                                                         obj[xmin_oneb],
                                                                                         obj[xmax_oneb], obj)
@@ -162,7 +165,7 @@ class DataPreprocessing(object):
                                                                                         obj[ymin_oneb],
                                                                                         obj[ymax_oneb], obj)
 
-        return resized_image, image_objects
+        return image_objects
 
     def normalize(self, image_to_normalize):
 
@@ -170,14 +173,27 @@ class DataPreprocessing(object):
 
         return normalized_image
 
-    def preprocess_for_training(self, image):
-        image, pure_cv2_image, objects, filename = self.read_image_and_xml(image)
-        image, objects = self.resize_image_and_boxes(image, objects, filename)
-        image = self.normalize(image)
-        if self.parameters.add_fourth_channel is True:
-            image = self.add_fourth_channel(pure_image=pure_cv2_image, preprocessed_image=image)
+    def preprocess_for_training(self, image, image_only=False, object_only=False):
 
-        return image, objects, filename
+        image, pure_cv2_image, objects, filename = self.read_image_and_xml(image)
+
+        if image_only is False:
+            objects = self.resize_boxes(image_to_resize_shape=image.shape, image_objects=objects, filename=filename)
+
+        if object_only is False:
+            image = self.resize_image(image_to_resize=image)
+            image = self.normalize(image)
+
+            if self.parameters.add_fourth_channel is True:
+                image = self.add_fourth_channel(pure_image=pure_cv2_image, preprocessed_image=image)
+
+            if image_only is False:
+                return image, objects, filename
+            else:
+                return image, filename
+
+        else:
+            return objects, filename
 
     def preprocess_for_inference(self, image, pure_cv2_image):
         # image = self.read_image(image_path=image_path)
@@ -224,11 +240,11 @@ class DataPreprocessing(object):
         if self.parameters.use_grayscale_mask is True:
             grayscale_pure_image = cv2.cvtColor(pure_image, cv2.COLOR_BGR2GRAY)
             gray_scale_fourth_channel = cv2.bitwise_and(grayscale_pure_image, grayscale_pure_image, mask=filtered_fourth_channel)
-            fourth_channel = gray_scale_fourth_channel/self.parameters.data_preprocessing_normalize
+            fourth_channel = gray_scale_fourth_channel / self.parameters.data_preprocessing_normalize
         if self.parameters.use_hue_mask is True:
             hsv_fourth_channel = cv2.bitwise_and(image_hsv, image_hsv, mask=filtered_fourth_channel)
             hue_fourth_channel, _, _ = cv2.split(hsv_fourth_channel)
-            fourth_channel = hue_fourth_channel/self.parameters.data_preprocessing_normalize
+            fourth_channel = hue_fourth_channel / self.parameters.data_preprocessing_normalize
 
         resized_fourth_channel = self.resize_image(fourth_channel)
 
@@ -254,4 +270,3 @@ class DataPreprocessing(object):
         four_chan_image = cv2.merge((r_channel, g_channel, b_channel, resized_fourth_channel))
 
         return four_chan_image
-

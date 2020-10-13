@@ -1,3 +1,4 @@
+import numpy as np
 class Parameters(object):
     def __init__(self,
                  n_classes,
@@ -26,7 +27,7 @@ class Parameters(object):
                  data_preprocessing_normalize,
                  labels_list,
                  debug,
-                 threshold,
+                 conf_threshold,
                  iou_threshold,
                  metagraph,
                  checkpoint,
@@ -62,8 +63,12 @@ class Parameters(object):
                  car_pov_inference_mode,
                  keep_small_ones,
                  weights_from_npy,
-                 fixed_point_width,
-                 print_sel_p
+                 fixed_point_width_weights,
+                 fixed_point_width_activ,
+                 print_sel_p,
+                 sparsity_ann_flag,
+                 optimizer,
+                 momentum
                  ):
         self.n_classes = n_classes
         self.n_anchors = n_anchors
@@ -92,7 +97,7 @@ class Parameters(object):
         self.data_preprocessing_normalize = data_preprocessing_normalize
         self.labels_list = labels_list
         self.debug = debug
-        self.threshold = threshold
+        self.conf_threshold = conf_threshold
         self.iou_threshold = iou_threshold
         self.metagraph = metagraph
         self.checkpoint = checkpoint
@@ -127,7 +132,24 @@ class Parameters(object):
         self.car_pov_inference_mode = car_pov_inference_mode
         self.keep_small_ones = keep_small_ones
         self.weights_from_npy = weights_from_npy
-        self.fixed_point_width = fixed_point_width
+        self.fixed_point_width_activ = fixed_point_width_activ
+        self.fixed_point_width_weights = fixed_point_width_weights
         self.print_sel_p = print_sel_p
         self.tf_device = tf_device
         self.true_values_shape = [None, output_h, output_w, n_anchors, 4 + 1 + n_classes + 2]
+        self.sparsity_ann_flag = sparsity_ann_flag,
+        self.optimizer = optimizer
+        self.momentum = momentum
+
+
+        anchors_w = list()
+        anchors_h = list()
+        for b in range(n_anchors):
+            sel_anchor_w = anchors[2 * b + 0]
+            anchors_w.append(sel_anchor_w)
+
+            sel_anchor_h = anchors[2 * b + 1]
+            anchors_h.append(sel_anchor_h)
+
+        self.anchors_h = np.array(anchors_h, dtype=np.float32)
+        self.anchors_w = np.array(anchors_w, dtype=np.float32)

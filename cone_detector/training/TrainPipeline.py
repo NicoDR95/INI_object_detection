@@ -1,10 +1,12 @@
 import logging
 import math
 import time
-from math import ceil
+import traceback
 
 import os
 import tensorflow as tf
+
+from utility.utility_library import measure_time
 
 log = logging.getLogger()
 
@@ -25,26 +27,36 @@ class TrainPipeline(object):
         self.network_loss_linked = False
         self.training_data_prepared = False
         self.tf_runned = False
+        self.sparsity_dict = {}
 
     def train(self):
         if self.training_data_prepared is False:
-            self.all_datasets_dict = self.prepare_training()
+            self.all_datasets_dict, self.global_step, self.epoch_step = self.prepare_training()
 
         if self.network_loss_linked is False:
             self.link_network_loss()
 
         if self.tf_runned is False:
-            self.global_step, self.merged_summary_op, self.summary_writer, self.sess, self.saver = self.get_tf_run()
+            self.merged_summary_op, self.summary_writer, self.sess, self.saver = self.get_tf_run()
 
-        n_images = len(self.all_datasets_dict)
+        increment_op = tf.assign_add(self.epoch_step, 1, name='increment_epoch_step')
 
         op_to_run = [self.optimizer, self.merged_summary_op, self.loss_tf]
 
+        self.batch_generator.set_dataset(dataset=self.all_datasets_dict,
+                                         preprocessor=self.data_preprocessing,
+                                         visualizer=self.visualizer)
+
         for epoch in range(self.parameters.n_epochs):
-            self.global_step += 1
-            batches = self.batch_generator.get_generator(dataset=self.all_datasets_dict,
-                                                         preprocessor=self.data_preprocessing,
-                                                         visualizer=self.visualizer)
+            try:
+                if 'mid_epoch' not in tf.train.latest_checkpoint(self.parameters.saved_model_dir):
+                    epoch_n = self.sess.run(increment_op)
+                else:
+                    epoch_n = self.sess.run(self.epoch_step)
+            except TypeError:
+                epoch_n = self.sess.run(increment_op)
+
+            batches = self.batch_generator.get_generator()
 
             try:
                 epoch_start_t = time.time()
@@ -56,16 +68,19 @@ class TrainPipeline(object):
                                                                            self.train_flag_ph: self.parameters.training})
 
                     if loss > self.parameters.loss_filename_print_threshold or math.isnan(loss):
-                        log.warn("Following images gave loss higher than threshold: {}".format(filenames))
+                        log.warn("Following images gave loss higher than conf_threshold: {}".format(filenames))
 
-                    step_idx = self.global_step * int(ceil((n_images / self.parameters.batch_size))) + batch_iter_counter
-                    self.summary_writer.add_summary(summary, step_idx)
+                    self.summary_writer.add_summary(summary, self.sess.run(self.global_step))
+                    self.summary_writer.flush()
 
-                    # self.summary_writer.flush()
                     batch_end_t = time.time()
                     batch_time = batch_end_t - batch_start_t
                     img_s = self.parameters.batch_size / batch_time
-                    log.info("Batch time: {:2f} ({:3f} img/s) - loss {:5f}".format(batch_time, img_s, loss))
+                    percent_batches_done = 100 * batch_iter_counter / self.batch_generator.num_batches
+                    log.info("Epoch {} - Batch {}/{} ({:.2f}%) - time: {:.2f} ({:.2f} img/s) - loss {:.5f}".format(epoch_n, batch_iter_counter + 1,
+                                                                                                                   self.batch_generator.num_batches,
+                                                                                                                   percent_batches_done,
+                                                                                                                   batch_time, img_s, loss))
 
 
             except KeyboardInterrupt:
@@ -73,45 +88,61 @@ class TrainPipeline(object):
                 log.info("Saving the models in 3 seconds...")
                 log.info("Press ctrl+C again to abort")
                 time.sleep(3)
+
+
+
                 log.info("Saving the model...")
 
                 if not os.path.exists(self.parameters.saved_model_dir):
                     log.info("Creating save model dir {}".format(self.parameters.saved_model_dir))
                     os.makedirs(self.parameters.saved_model_dir)
 
-                self.saver.save(self.sess,
-                                os.path.join(self.parameters.saved_model_dir, self.parameters.saved_model_name + '-mid_epoch'),
-                                global_step=self.global_step - 1)
+                # self.summary_writer.flush()
+                with tf.control_dependencies(self.summary_writer.flush()):
+                    self.saver.save(self.sess, os.path.join(self.parameters.saved_model_dir, self.parameters.saved_model_name + '-mid_epoch'),
+                                    global_step=epoch_n)
+
+                self.run_accuracy(epoch_n, False)
                 exit("Model saved")
-
             epoch_end_t = time.time()
-            log.info("######################### Epoch {} completed #############################".format(self.global_step))
-            log.info("Epoch time: {:2f}".format(epoch_end_t - epoch_start_t))
-
-            log.info("######################### Epoch {} completed #############################".format(self.global_step))
+            log.info("######################### Epoch {} completed #############################".format(epoch_n))
+            log.info("Epoch time: {:.2f}".format(epoch_end_t - epoch_start_t))
             log.info("Saving the model...")
 
             if not os.path.exists(self.parameters.saved_model_dir):
                 log.info("Creating save model dir {}".format(self.parameters.saved_model_dir))
                 os.makedirs(self.parameters.saved_model_dir)
+            # self.summary_writer.flush()
+            with tf.control_dependencies(self.summary_writer.flush()):
+                self.saver.save(self.sess, os.path.join(self.parameters.saved_model_dir, self.parameters.saved_model_name),
+                                global_step=epoch_n)
 
-            self.saver.save(self.sess, os.path.join(self.parameters.saved_model_dir, self.parameters.saved_model_name), global_step=self.global_step)
-
-            try:
-                log.info("Evaluating results...")
-                self.accuracy.run_and_get_accuracy(train_sess=self.sess, step=self.global_step)
-            except:
-                log.error("**********************Exception during get accuracy******************")
+            self.run_accuracy(epoch_n, True)
 
         log.info("Requested epochs done - training completed")
 
+    @measure_time
+    def run_accuracy(self, step, step_finished):
+        try:
+            log.info("Evaluating results...")
+            self.accuracy.run_and_get_accuracy(train_sess=self.sess, step=step, epoch_finished=step_finished)
+        except Exception as e:
+            log.error("**********************Exception during get accuracy******************")
+            log.error("Error:" + str(e))
+            traceback.print_exc()
+
     def prepare_training(self):
-        annotations_dir = self.parameters.annotations_dir
+        with tf.device("/cpu:0"):
+            with tf.name_scope(name='training_steps'):
+                global_step = tf.Variable(0, name='global_step', trainable=False)
+                epoch_step = tf.Variable(0, name='epoch_step', trainable=False)
+
         # self.dataset is a list of datasets, we'll iterate on them and put them is single list of dictionaries
         all_dataset_dict = list()
         for reader in self.dataset:
             new_annotation = reader.get_dataset_dict()
-            all_dataset_dict.extend(new_annotation)
+            if new_annotation is not None:
+                all_dataset_dict.extend(new_annotation)
 
         # TODO, pass the augmented data as a second dataset calculated offline
         # augmented_data = self.data_augmentation.get_augemnted_data(all_dataset_dict)
@@ -119,21 +150,29 @@ class TrainPipeline(object):
         # preprocessed_data = self.data_preprocessing.get_preprocessed_data(all_dataset_dict)
         self.training_data_prepared = True
 
-        return all_dataset_dict
+        return all_dataset_dict, global_step, epoch_step
 
     def link_network_loss(self):
 
-        self.net_output, self.input_ph, self.train_flag_ph = self.network.get_network()
+        if self.parameters.sparsity_ann_flag:
+            self.net_output, self.input_ph, self.train_flag_ph, self.sparsity_dict = self.network.get_network()
+        else:
+            self.net_output, self.input_ph, self.train_flag_ph = self.network.get_network()
         self.loss_tf, self.true_values_ph = self.loss.get_loss(self.net_output)
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 
         with tf.control_dependencies(update_ops):
-            self.optimizer = self.optimizer_object.get_optimizer().minimize(self.loss_tf)
+            if self.parameters.optimizer is 'Adam':
+                self.optimizer = self.optimizer_object.get_adam_optimizer().minimize(self.loss_tf, global_step=self.global_step)
+            elif self.parameters.optimizer is 'SGD':
+                self.optimizer = self.optimizer_object.get_sgd_momentum_optimizer().minimize(self.loss_tf, global_step=self.global_step)
+            else:
+                exit("optimizer {} not supported".format(self.parameters.optimizer))
 
         self.network_loss_linked = True
         log.info('link_network_loss completed')
 
-    def get_global_step(self):
+    def get_epoch_step(self):
         step = tf.train.latest_checkpoint(self.parameters.saved_model_dir)
         if step is not None:
             step = int(step[-1])
@@ -149,7 +188,8 @@ class TrainPipeline(object):
 
     def get_tf_run(self):
 
-        global_step = self.get_global_step()
+        # epoch_step = self.get_epoch_step()
+
         sess = tf.Session()
         sess.run(tf.global_variables_initializer())
 
@@ -162,9 +202,22 @@ class TrainPipeline(object):
 
             # Tensorboard Stuff
             tf.summary.scalar("loss", self.loss_tf)
+            if self.parameters.sparsity_ann_flag:
+                tf.summary.scalar("sparsity_l1", self.sparsity_dict['l1'])
+                tf.summary.scalar("sparsity_l2", self.sparsity_dict['l2'])
+                tf.summary.scalar("sparsity_l3", self.sparsity_dict['l3'])
+                tf.summary.scalar("sparsity_l4", self.sparsity_dict['l4'])
+                tf.summary.scalar("sparsity_l5", self.sparsity_dict['l5'])
+                tf.summary.scalar("sparsity_l6", self.sparsity_dict['l6'])
+                tf.summary.scalar("sparsity_l7", self.sparsity_dict['l7'])
+                tf.summary.scalar("sparsity_l8", self.sparsity_dict['l8'])
+                tf.summary.scalar("sparsity_l9", self.sparsity_dict['l9'])
+                tf.summary.scalar("sparsity_mean", self.sparsity_dict['mean'])
+                tf.summary.scalar("sparsity_weighted_mean", self.sparsity_dict['weighted_mean'])
+
             merged_summary_op = tf.summary.merge_all()
-            summary_writer = tf.summary.FileWriter(self.parameters.tensorboard_dir, sess.graph)
+            summary_writer = tf.summary.FileWriter(self.parameters.tensorboard_dir, sess.graph, flush_secs=30, max_queue=1000)
 
         self.tf_runned = True
 
-        return global_step, merged_summary_op, summary_writer, sess, saver
+        return merged_summary_op, summary_writer, sess, saver

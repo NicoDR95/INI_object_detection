@@ -23,8 +23,6 @@ class TinyYolo(NetworkBase):
 
         log.info("Building TinyYolo network")
 
-        x = self.dropout_layer(x)
-
         x = self.conv_layer_bn(x, 16, (3, 3), self.activation, 'convolution_1')
         x = self.maxpool_layer(x, (2, 2), (2, 2), 'maxpool_1')                              # 208x208
 

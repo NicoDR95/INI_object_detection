@@ -37,12 +37,12 @@ class FullYolo_ConcatConvolution(NetworkBase):
         x = self.conv_layer_bn(x, 1024, (3, 3), self.activation, 'convolution18')
 
         x = self.conv_layer_bn(x, 1024, (3, 3), self.activation, 'convolution19')
-        x = self.conv_layer_bn(x, 1024, (3, 3), self.activation, 'convoonlution20')
+        x = self.conv_layer_bn(x, 1024, (3, 3), self.activation, 'convolution20')
 
         passthrough = self.conv_layer_bn(x, 64, (1, 1), self.activation, 'convolution21')
         reordered_layer = self.reorg_layer(passthrough, 'reorg_layer')
         concatenated_layer = self.concat_layers(x, reordered_layer, 'concat_layers')
-        x = self.conv_layer_bn(concatenated_layer, 1024, (3, 3), self.activation, 'convlution22')
+        x = self.conv_layer_bn(concatenated_layer, 1024, (3, 3), self.activation, 'convolution22')
         x = self.detector_layer(x)
 
         x = self.reshape_output_layer(x)

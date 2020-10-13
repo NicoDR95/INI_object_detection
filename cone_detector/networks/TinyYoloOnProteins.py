@@ -1,5 +1,5 @@
 from networks.NetworkBase import NetworkBase
-
+import tensorflow as tf
 
 class TinyYoloOnProteins(NetworkBase):
 
@@ -12,8 +12,6 @@ class TinyYoloOnProteins(NetworkBase):
             self.activation = self.relu
         else:
             raise ValueError("leaky_relu value is wrong")
-
-
 
     def network_build(self, x):
 

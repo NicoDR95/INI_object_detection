@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="729ad05d-a090-4ae7-9e83-8a7f51502e42" name="Default Changelist" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="ProjectId" id="1iH1pNTwSfGcRPt34mPffzLaAun" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="last_opened_file_path" value="X:/workspaces/scratch/deritan/power_explore" />
+    <property name="settings.editor.selected.configurable" value="preferences.editor" />
+  </component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\workspace\synthara\freelancer\INI_object_detection-master\cone_detector_memless\networks" />
+    </key>
+  </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="729ad05d-a090-4ae7-9e83-8a7f51502e42" name="Default Changelist" comment="" />
+      <created>1601549884535</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1601549884535</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="943" y="462" key="FileChooserDialogImpl" timestamp="1601991049772">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state x="943" y="462" key="FileChooserDialogImpl/0.0.2560.1400@0.0.2560.1400" timestamp="1601991049772" />
+    <state x="615" y="222" key="SettingsEditor" timestamp="1601907406438">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state x="461" y="165" key="SettingsEditor/0.0.1920.1040@0.0.1920.1040" timestamp="1601549917908" />
+    <state x="615" y="222" key="SettingsEditor/0.0.2560.1400@0.0.2560.1400" timestamp="1601907406438" />
+    <state x="667" y="255" width="585" height="530" key="find.popup" timestamp="1601557012272">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="667" y="255" width="585" height="530" key="find.popup/0.0.1920.1040@0.0.1920.1040" timestamp="1601557012272" />
+  </component>
+</project>

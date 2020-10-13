@@ -1,89 +1,68 @@
-import numpy as np
+import logging
+from operator import itemgetter
 
-class BoundBox(object):
+log = logging.getLogger()
 
-    def __init__(self, class_num, accuracy_mode):
-        self.x = 0.
-        self.y = 0.
-        self.w = 0.
-        self.h = 0.
-        self.xmin = 0.
-        self.xmax = 0.
-        self.ymin = 0.
-        self.ymax = 0.
-        self.conf = 0.
-        self.class_probs = np.zeros(class_num)
-        self.accuracy_mode = accuracy_mode
-        self.class_type = ' '
 
-    def area(self):
-        return self.w*self.h
-    def iou(self, box, accuracy_mode=False):
-        intersection = self.intersect(box, accuracy_mode)
+# TODO The class for the prediction should be a child of the class of the groundtruth
+class BoundBox(tuple):
+    # Makes the class imumutable after creation
+    __slots__ = []
 
-        if accuracy_mode is False:
-            union = self.w*self.h + box.w*box.h - intersection
-            iou = intersection / union
-            return iou
-        elif accuracy_mode is True:
-            pred_area = (self.ymax - self.ymin) * (self.xmax - self.xmin)
-            true_area = (box.ymax - box.ymin) * (box.xmax - box.xmin)
-            assert(pred_area >= 0)
-            assert(true_area >= 0)
-            union = pred_area + true_area - intersection
-            assert(union >= 0)
-            if self.class_type == box.class_type:
-                iou = intersection / union
-            else:
-                iou = 0
-            return iou
+    def __new__(cls, xmin, xmax, ymin, ymax, probs, class_type, conf):
 
-    def intersect(self, box, accuracy_mode):
-        if accuracy_mode is False:
-            width_inters  = self.__overlap([self.x-self.w/2, self.x+self.w/2], [box.x-box.w/2, box.x+box.w/2])
-            height_inters = self.__overlap([self.y-self.h/2, self.y+self.h/2], [box.y-box.h/2, box.y+box.h/2])
-            intersect_area = width_inters * height_inters
-            return intersect_area
+        y_diff = ymax - ymin
+        x_diff = xmax - xmin
 
-        elif accuracy_mode is True:
-            width_inters  = self.__overlap([self.xmin, self.xmax], [box.xmin, box.xmax])
-            height_inters = self.__overlap([self.ymin, self.ymax], [box.ymin, box.ymax])
-            intersect_area = width_inters * height_inters
-            return intersect_area
+        if y_diff < 0:
+            log.warn("Negative y diff {}".format(y_diff))
 
-    def __overlap(self, interval_a, interval_b):
-        # calculate the overlap between two boxes
-        # inputs: xmin and xmax (or ymin and ymax) coordinates of boxes
-        # output: length of x (or y) segment of overlap
+        if y_diff < 0:
+            log.warn("Negative x diff {}".format(x_diff))
 
-        x1, x2 = interval_a
-        x3, x4 = interval_b
-        if x3 < x1:
-            if x4 < x1:
-                return 0
-            else:
-                return min(x2, x4) - x1
+        area = y_diff * x_diff
+
+
+
+
+        # Safety for avoiding weird results at network output
+        if area <= 0:
+            log.warn("Box has area {}".format(area))
+        area = max(area, 0.0)
+
+        return tuple.__new__(cls, (xmin, xmax, ymin, ymax, area, class_type, probs, conf))
+
+    xmin = property(itemgetter(0))
+    xmax = property(itemgetter(1))
+    ymin = property(itemgetter(2))
+    ymax = property(itemgetter(3))
+    area = property(itemgetter(4))
+    class_type = property(itemgetter(5))
+    probs = property(itemgetter(6))
+    conf = property(itemgetter(7))
+
+    def iou(self, box):
+        inters_xmin = max(self.xmin, box.xmin)
+        inters_ymin = max(self.ymin, box.ymin)
+        inters_xmax = min(self.xmax, box.xmax)
+        inters_ymax = min(self.ymax, box.ymax)
+
+        inters_width = max(0.0, inters_xmax - inters_xmin)
+        inters_height = max(0.0, inters_ymax - inters_ymin)
+
+        inters_area = inters_width * inters_height
+
+        if inters_area <= 0 or self.area == 0 or box.area == 0:
+            iou = 0.0
         else:
-            if x2 < x3:
-                return 0
-            else:
-                return min(x2, x4) - x3
+            try:
+                iou = float(inters_area) / float(self.area + box.area - inters_area)
+            except ZeroDivisionError:
+                log.error("ZeroDivisionError Error")
+                log.error("inters_area {}".format(inters_area))
+                log.error("self.area {}".format(self.area))
+                log.error("box.area {}".format(box.area))
+                log.error("inters_x0 {} inters_x1 {} inters_y0 {} inters_y1 {}".format(inters_xmin, inters_xmax, inters_ymin, inters_ymax))
+                raise ZeroDivisionError
 
-    def is_matrioska(self, box):
-        # Check if the passed box is contained into the self box
-        # Remember: the 0,0 point is the top_left corner
-
-        x1 = self.x-self.w/2
-        x2 = self.x+self.w/2
-        x3 = box.x-box.w/2
-        x4 = box.x+box.w/2
-
-        y1 = self.y-self.h/2
-        y2 = self.y+self.h/2
-        y3 = box.y-box.h/2
-        y4 = box.y+box.h/2
-
-        if x2 > x4 and x1 < x3 and y2 > y4 and y1 < y3:
-            return True
-        else:
-            return False
+        return iou
