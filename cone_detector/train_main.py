@@ -18,6 +18,7 @@ from predict.Predict import Predict
 from training.Optimizer import Optimizer
 from training.TrainPipeline import TrainPipeline
 from training.YoloLossCrossEntropyProb import YoloLossCrossEntropyProb
+from training.Pruning import Pruning
 from utility.CalculateAnchors import CalculateAnchors
 from utility.DatasetTFRecordsConverter import TFRecordsConverter
 from visualization.Visualization import Visualization
@@ -114,6 +115,14 @@ anchors_mode = False
 # ~~~~~~~~~ Training settings ~~~~~~~~~
 optimizer = "SGD" # Adam or SGD
 momentum_for_sgd = 0.9
+# Pruning Settings
+enable_pruning = True
+pruning_begin_step = 10 # A step is a batch
+pruning_end_step = 1000000
+pruning_incr_frequency = 100
+pruning_initial_sparsity = 0.0
+pruning_final_sparsity = 0.5
+
 sparsity_ann_flag = True
 save_as_graphdef = False
 visualize_dataset = False
@@ -297,7 +306,13 @@ if __name__ == "__main__":
                                            print_sel_p=print_sel_p,
                                            sparsity_ann_flag=sparsity_ann_flag,
                                            optimizer=optimizer,
-                                           momentum=momentum_for_sgd
+                                           momentum=momentum_for_sgd,
+                                           enable_pruning=enable_pruning,
+                                           initial_sparsity=pruning_initial_sparsity,
+                                           final_sparsity=pruning_final_sparsity,
+                                           begin_step=pruning_begin_step,
+                                           end_step=pruning_end_step,
+                                           frequency=pruning_incr_frequency
                                            )
 
         train_dataset_parser = dataset_parser_type(parameters=train_parameters,
@@ -394,9 +409,9 @@ if __name__ == "__main__":
                                          gaussian_sigma=gaussian_sigma,
                                          average_blur=average_blur_flag,
                                          average_kernel_min=average_kernel_min,
-                                         average_kernel_max=average_kernel_max
+                                         average_kernel_max=average_kernel_max,
+                                           )
 
-                                         )
 
         train_pipeline = pipeline_type(parameters=train_parameters,
                                        dataset=cones_dataset_parser,

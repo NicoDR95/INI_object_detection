@@ -220,8 +220,46 @@ class NetworkBase(object):
         x = self.quantize_variable(x, shape, width=self.parameters.fixed_point_width_activ)
         return x
 
-    def conv_layer_bn_before_relu_quantized(self, x, out_ch, kernel, activation_func,weight_precision, name):
+    def get_quantized_conv_pruned(self, x, out_ch, kernel, name, weight_precision, pruner, add_biases=False):
+        kernel_shape = list(kernel) + [int(x.shape[3]), out_ch]
+        kernels = self.get_quantized_kernel(kernel_shape,weight_precision, name)
+        # Prune the kernels
+        kernels = pruner.get_pruned_kernel(kernels, self.parameters.training)
+
+        x = tf.nn.conv2d(
+            input=x,
+            filter=kernels,
+            strides=[1, 1, 1, 1],
+            padding="SAME",
+            use_cudnn_on_gpu=True,
+            data_format='NHWC',
+            dilations=[1, 1, 1, 1],
+            name=name
+        )
+
+        shape = [self.parameters.batch_size] + x.get_shape().as_list()[1:]
+
+        if add_biases:
+            biases = tf.Variable(-1 * np.ones(shape=(out_ch,)), dtype=tf.float32)
+            biases = self.quantize_variable(biases, (out_ch,), width=weight_precision)
+            x = tf.nn.bias_add(x, biases)
+
+
+        x = self.quantize_variable(x, shape, width=self.parameters.fixed_point_width_activ)
+        return x
+
+    def conv_layer_bn_before_relu_quantized(self, x, out_ch, kernel, activation_func, weight_precision, name):
         x = self.get_quantized_conv(x, out_ch, kernel, name,weight_precision,  add_biases=False)
+
+        x = tf.layers.batch_normalization(inputs=x, training=self.train_flag_ph, momentum=0.99, epsilon=0.001, center=True,
+                                          scale=True, name=name + '_bn')
+
+        x = activation_func(x)
+
+        return x
+
+    def conv_layer_bn_before_relu_quantized_pruned(self, x, out_ch, kernel, activation_func, weight_precision, pruner, name):
+        x = self.get_quantized_conv_pruned(x, out_ch, kernel, name,weight_precision,pruner=pruner, add_biases=False)
 
         x = tf.layers.batch_normalization(inputs=x, training=self.train_flag_ph, momentum=0.99, epsilon=0.001, center=True,
                                           scale=True, name=name + '_bn')

@@ -68,7 +68,13 @@ class Parameters(object):
                  print_sel_p,
                  sparsity_ann_flag,
                  optimizer,
-                 momentum
+                 momentum,
+                 enable_pruning,
+                 pruning_initial_sparsity,
+                 pruning_final_sparsity,
+                 pruning_begin_step,
+                 pruning_end_step,
+                 pruning_incr_frequency
                  ):
         self.n_classes = n_classes
         self.n_anchors = n_anchors
@@ -140,6 +146,12 @@ class Parameters(object):
         self.sparsity_ann_flag = sparsity_ann_flag,
         self.optimizer = optimizer
         self.momentum = momentum
+        self.enable_pruning = enable_pruning,
+        self.pruning_initial_sparsity = pruning_initial_sparsity,
+        self.pruning_final_sparsity = pruning_final_sparsity,
+        self.pruning_begin_step = pruning_begin_step,
+        self.pruning_end_step = pruning_end_step,
+        self.pruning_incr_frequency = pruning_incr_frequency
 
 
         anchors_w = list()
