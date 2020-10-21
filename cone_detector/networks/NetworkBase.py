@@ -93,6 +93,7 @@ class NetworkBase(object):
     def quantize_variable(self, variable, shape, width):
         name = variable.name[:-2]
 
+
         num_entries = reduce(lambda x, y: x * y, shape)
 
         use_float16 = False
@@ -220,6 +221,15 @@ class NetworkBase(object):
         x = self.quantize_variable(x, shape, width=self.parameters.fixed_point_width_activ)
         return x
 
+    def get_sparsity_unknown_size(self, input_tensor):
+
+        tensor_size = tf.cast(tf.size(input_tensor, out_type=tf.int32), dtype=tf.float32)
+        return 1.0 - (tf.math.count_nonzero(input_tensor, dtype=tf.float32) / tensor_size)
+
+    def get_tensor_size(self, input_tensor):
+
+        return tf.cast(tf.size(input_tensor, out_type=tf.int32), dtype=tf.float32)
+
     def get_quantized_conv_pruned(self, x, out_ch, kernel, name, weight_precision, pruner, add_biases=False):
         kernel_shape = list(kernel) + [int(x.shape[3]), out_ch]
         kernels = self.get_quantized_kernel(kernel_shape,weight_precision, name)
@@ -244,8 +254,8 @@ class NetworkBase(object):
             biases = self.quantize_variable(biases, (out_ch,), width=weight_precision)
             x = tf.nn.bias_add(x, biases)
 
-
         x = self.quantize_variable(x, shape, width=self.parameters.fixed_point_width_activ)
+
         return x
 
     def conv_layer_bn_before_relu_quantized(self, x, out_ch, kernel, activation_func, weight_precision, name):

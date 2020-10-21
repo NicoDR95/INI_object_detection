@@ -66,18 +66,20 @@ def quantize(variable, width, sel_p=None):
 
 
 if __name__ == "__main__":
-    models_dir = '/home/nico/Desktop/paper_network_quantization/networks/'
-    model_name = 'proteins_mixed_extreme/'
-    folder_name = ''
-    checkpoint_name = 'proteins_mixed_extreme-4'
+    models_dir = r'C:/workspace/synthara/freelancer/INI_object_detection-master/saved_models/'
+    model_name = 'ProteinsQuantizedPruned8BitNewAlg/'
+    folder_name = 'run_1/'
+    checkpoint_name = 'ProteinsQuantizedPruned8BitNewAlg-49'
     checkpoint = models_dir + model_name + folder_name +checkpoint_name
     metagraph = checkpoint + '.meta'
-    output_folder = '/home/nico/Desktop/paper_network_quantization/quantized_networks/' + model_name
+    output_folder = r'C:/workspace/synthara/freelancer/INI_object_detection-master/saved_models/output_weights_' + model_name
+    # Set to True if you want to apply the saved pruning mask to the weights
+    apply_pruning_mask = True
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
     width = 8
-    mixed_mode = True
+    mixed_mode = False
 
     with tf.Session() as sess:
         tf.train.import_meta_graph(metagraph, clear_devices=True)
@@ -89,24 +91,38 @@ if __name__ == "__main__":
         variables = tf.get_collection("trainable_variables")
         all_variables = tf.get_collection("variables")
         update_ops = tf.get_collection("update_ops")
-        print(all_variables)
+        # print(all_variables)
         variables_dict = collections.OrderedDict()
         layer_n = 0
+        mask_n = 0
         old_name = 'noname_noname_noname'
         for v in all_variables:
             if 'Adam' not in str(v.name) and 'step' not in str(v.name):
                 v_name = str(v.name)
-                print(v_name)
+                print('Found variable with name:', v_name)
+
                 # Use this for all nets except proteins
                 # if ('conv' in v_name[0:13] and v_name[0:13] != old_name[0:13]) or (v_name[0:3] == 'det'):
 
                 if ('conv' in v_name[0:4] and v_name[0:5] != old_name[0:5]) or (v_name[0:3] == 'det'):
-                    print('miao')
+                    print('Found conv with name', v_name)
                     layer_n += 1
                     layer_name = 'layer' + str(layer_n)
                     variables_dict[layer_name] = collections.OrderedDict()
+
                 values = graph.get_tensor_by_name(v_name)
-                variables_dict[layer_name][v_name] = collections.OrderedDict()
+                try:
+                    variables_dict[layer_name][v_name] = collections.OrderedDict()
+                except NameError:
+                    if 'mask' in v_name and layer_n == 0:
+                        # End up here if the first variable is the mask and it's found before the first layer
+                        # So create the dict entry manually
+                        layer_name = 'layer1'
+                        variables_dict[layer_name] = collections.OrderedDict()
+                        variables_dict[layer_name][v_name] = collections.OrderedDict()
+                    else:
+                        exit('Error: Unrecognized case')
+
                 variables_dict[layer_name][v_name]['name'] = v_name
                 variables_dict[layer_name][v_name]['shape'] = v.shape
                 variables_dict[layer_name][v_name]['values'] = sess.run(values)
@@ -131,12 +147,16 @@ if __name__ == "__main__":
                     beta = layer_dict['convolution_'+str(layer_n)+'_bn/beta:0']['values']
                     moving_mean = layer_dict['convolution_'+str(layer_n)+'_bn/moving_mean:0']['values']
                     moving_variance = layer_dict['convolution_'+str(layer_n)+'_bn/moving_variance:0']['values']
+                    if apply_pruning_mask:
+                        pruning_mask = layer_dict['convolution_'+str(layer_n)+'_mask:0']['values']
                 except KeyError:
                     weights = layer_dict['conv'+str(layer_n)+'_quantized_weights:0']['values']
                     gamma = layer_dict['conv'+str(layer_n)+'_bn/gamma:0']['values']
                     beta = layer_dict['conv'+str(layer_n)+'_bn/beta:0']['values']
                     moving_mean = layer_dict['conv'+str(layer_n)+'_bn/moving_mean:0']['values']
                     moving_variance = layer_dict['conv'+str(layer_n)+'_bn/moving_variance:0']['values']
+                    if apply_pruning_mask:
+                        pruning_mask = layer_dict['conv'+str(layer_n)+'_mask:0']['values']
 
                 weights = weights*gamma
                 weights = weights/(np.sqrt(moving_variance))
@@ -155,9 +175,14 @@ if __name__ == "__main__":
                     else:
                         width = 3
 
+                # Aplly the pruning mask
+                if apply_pruning_mask:
+                    weights = weights * pruning_mask
+                    weights_after_pruning = weights
+
                 weights, sel_p_w, max_value_weight_correspondent, shift = quantize(weights, width=width, sel_p=None)
-                print('layer number:', layer_n)
-                print('width:', width)
+
+                print('layer number: {} Bit width: {}'.format(layer_n, width))
 
                 sel_p_w_list.append(sel_p_w)
                 max_value_per_layer_weights.append(max_value_weight_correspondent)
@@ -175,12 +200,16 @@ if __name__ == "__main__":
                 max_value_per_layer_bias.append(max_value_bias_correspondent)
                 shift_per_layer_bias.append(shift)
 
-                np.set_printoptions(threshold=np.nan)
+                # np.set_printoptions(threshold=np.nan)
 
                 # np.save(output_folder+'not_quatized_weights_layer'+str(layer_n), weights_before_quantization)
                 # np.save(output_folder+'not_quatized_weights_layer'+str(layer_n), bias_before_quatization)
                 # print(weights)
                 # exit()
+
+                sparsity = 1 - np.count_nonzero(weights_after_pruning)/weights.size
+                print('weights sparsity before quant, after pruning:', sparsity)
+
                 np.save(output_folder+'layer'+str(layer_n)+'_weights', weights)
                 np.save(output_folder+'layer'+str(layer_n)+'_biases', bias)
 
@@ -191,8 +220,7 @@ if __name__ == "__main__":
 
                 weights = layer_dict['det_q_quantized_weights:0']['values']
                 weights, sel_p_w, max_value_weight_correspondent, shift = quantize(weights, width=width, sel_p=None)
-                print('detector_layer')
-                print('width:', width)
+                print('detector_layer with width:', width)
                 sel_p_w_list.append(sel_p_w)
                 max_value_per_layer_weights.append(max_value_weight_correspondent)
                 shift_per_layer_weights.append(shift)

@@ -155,7 +155,11 @@ class TrainPipeline(object):
     def link_network_loss(self):
 
         if self.parameters.sparsity_ann_flag:
-            self.net_output, self.input_ph, self.train_flag_ph, self.sparsity_dict = self.network.get_network()
+            try:
+                self.net_output, self.input_ph, self.train_flag_ph, self.sparsity_dict = self.network.get_network()
+            except ValueError:
+                exit("Error: Please set sparsity_ann parameter in main file to False if you are not using a sparsity anonnotationg network")
+
         else:
             self.net_output, self.input_ph, self.train_flag_ph = self.network.get_network()
         self.loss_tf, self.true_values_ph = self.loss.get_loss(self.net_output)

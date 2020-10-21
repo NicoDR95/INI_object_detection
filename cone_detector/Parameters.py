@@ -143,14 +143,14 @@ class Parameters(object):
         self.print_sel_p = print_sel_p
         self.tf_device = tf_device
         self.true_values_shape = [None, output_h, output_w, n_anchors, 4 + 1 + n_classes + 2]
-        self.sparsity_ann_flag = sparsity_ann_flag,
+        self.sparsity_ann_flag = sparsity_ann_flag
         self.optimizer = optimizer
         self.momentum = momentum
-        self.enable_pruning = enable_pruning,
-        self.pruning_initial_sparsity = pruning_initial_sparsity,
-        self.pruning_final_sparsity = pruning_final_sparsity,
-        self.pruning_begin_step = pruning_begin_step,
-        self.pruning_end_step = pruning_end_step,
+        self.enable_pruning = enable_pruning
+        self.pruning_initial_sparsity = pruning_initial_sparsity
+        self.pruning_final_sparsity = pruning_final_sparsity
+        self.pruning_begin_step = pruning_begin_step
+        self.pruning_end_step = pruning_end_step
         self.pruning_incr_frequency = pruning_incr_frequency
 
 

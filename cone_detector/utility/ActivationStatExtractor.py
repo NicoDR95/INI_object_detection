@@ -14,14 +14,14 @@ def preprocess(test_image_path):
 
 
 if __name__ == "__main__":
-    test_images_folder = '/home/nico/Desktop/paper_network_quantization/test_images/'
-    models_dir = '/home/nico/Desktop/paper_network_quantization/networks/'
-    model_name = 'proteins_mixed_extreme/'
-    folder_name = ''
-    checkpoint_name = 'proteins_mixed_extreme-4'
+    test_images_folder = 'C:/workspace/synthara/freelancer/INI_object_detection-master/test/test_image/'
+    models_dir = r'C:/workspace/synthara/freelancer/INI_object_detection-master/saved_models/'
+    model_name = 'ProteinsQuantizedPruned8BitNewAlg/'
+    folder_name = 'run_1/'
+    checkpoint_name = 'ProteinsQuantizedPruned8BitNewAlg-49'
     checkpoint = models_dir + model_name + folder_name + checkpoint_name
     metagraph = checkpoint + '.meta'
-    output_folder = '/home/nico/Desktop/paper_network_quantization/quantized_networks/' + model_name
+    output_folder = r'C:/workspace/synthara/freelancer/INI_object_detection-master/saved_models/output_weights_' + model_name
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 

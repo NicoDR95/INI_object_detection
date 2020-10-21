@@ -22,13 +22,84 @@
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
-    <property name="last_opened_file_path" value="X:/workspaces/scratch/deritan/power_explore" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/utility/ActivationStatExtractor.py" />
     <property name="settings.editor.selected.configurable" value="preferences.editor" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\workspace\synthara\freelancer\INI_object_detection-master\cone_detector_pruning\networks" />
       <recent name="C:\workspace\synthara\freelancer\INI_object_detection-master\cone_detector_memless\networks" />
     </key>
+  </component>
+  <component name="RunManager" selected="Python.WeightsExtractorNew">
+    <configuration name="ActivationStatExtractor" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
+      <module name="cone_detector_memless" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="C:\Users\nicol\anaconda3\envs\tf1\python.exe" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/utility" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/utility/ActivationStatExtractor.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="WeightsExtractorNew" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
+      <module name="cone_detector_memless" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="C:\Users\nicol\anaconda3\envs\tf1\python.exe" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/utility" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/utility/WeightsExtractorNew.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="train_main" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
+      <module name="cone_detector_memless" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="C:\Users\nicol\anaconda3\envs\tf1\python.exe" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/train_main.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Python.train_main" />
+      <item itemvalue="Python.WeightsExtractorNew" />
+      <item itemvalue="Python.ActivationStatExtractor" />
+    </list>
   </component>
   <component name="SvnConfiguration">
     <configuration />
@@ -44,18 +115,49 @@
     <servers />
   </component>
   <component name="WindowStateProjectService">
-    <state x="943" y="462" key="FileChooserDialogImpl" timestamp="1601991049772">
+    <state x="734" y="355" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1603262197248">
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
-    <state x="943" y="462" key="FileChooserDialogImpl/0.0.2560.1400@0.0.2560.1400" timestamp="1601991049772" />
+    <state x="734" y="355" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.2560.1400@0.0.2560.1400" timestamp="1603262197248" />
+    <state x="89" y="394" width="2376" height="1216" key="DiffContextDialog" timestamp="1603199962944">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state x="89" y="394" width="2376" height="1216" key="DiffContextDialog/0.0.2560.1400@0.0.2560.1400" timestamp="1603199962944" />
+    <state x="943" y="462" key="FileChooserDialogImpl" timestamp="1603262192114">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state x="640" y="432" key="FileChooserDialogImpl/0.0.1536.920@0.0.1536.920" timestamp="1602769523232" />
+    <state x="800" y="518" key="FileChooserDialogImpl/0.0.1920.1008@0.0.1920.1008" timestamp="1603116318722" />
+    <state x="943" y="462" key="FileChooserDialogImpl/0.0.2560.1400@0.0.2560.1400" timestamp="1603262192114" />
+    <state width="1560" height="293" key="GridCell.Tab.0.bottom" timestamp="1603262092897">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state width="1560" height="293" key="GridCell.Tab.0.bottom/0.0.2560.1400@0.0.2560.1400" timestamp="1603262092897" />
+    <state width="1560" height="293" key="GridCell.Tab.0.center" timestamp="1603262092897">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state width="1560" height="293" key="GridCell.Tab.0.center/0.0.2560.1400@0.0.2560.1400" timestamp="1603262092897" />
+    <state width="1560" height="293" key="GridCell.Tab.0.left" timestamp="1603262092897">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state width="1560" height="293" key="GridCell.Tab.0.left/0.0.2560.1400@0.0.2560.1400" timestamp="1603262092897" />
+    <state width="1560" height="293" key="GridCell.Tab.0.right" timestamp="1603262092897">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state width="1560" height="293" key="GridCell.Tab.0.right/0.0.2560.1400@0.0.2560.1400" timestamp="1603262092897" />
     <state x="615" y="222" key="SettingsEditor" timestamp="1601907406438">
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
     <state x="461" y="165" key="SettingsEditor/0.0.1920.1040@0.0.1920.1040" timestamp="1601549917908" />
     <state x="615" y="222" key="SettingsEditor/0.0.2560.1400@0.0.2560.1400" timestamp="1601907406438" />
-    <state x="667" y="255" width="585" height="530" key="find.popup" timestamp="1601557012272">
-      <screen x="0" y="0" width="1920" height="1040" />
+    <state x="94" y="94" width="1349" height="733" key="com.intellij.history.integration.ui.views.SelectionHistoryDialog" timestamp="1602857625910">
+      <screen x="0" y="0" width="1536" height="920" />
     </state>
+    <state x="94" y="94" width="1349" height="733" key="com.intellij.history.integration.ui.views.SelectionHistoryDialog/0.0.1536.920@0.0.1536.920" timestamp="1602857625910" />
+    <state x="534" y="226" width="762" height="530" key="find.popup" timestamp="1603097459508">
+      <screen x="0" y="0" width="1536" height="920" />
+    </state>
+    <state x="534" y="226" width="762" height="530" key="find.popup/0.0.1536.920@0.0.1536.920" timestamp="1603097459508" />
     <state x="667" y="255" width="585" height="530" key="find.popup/0.0.1920.1040@0.0.1920.1040" timestamp="1601557012272" />
   </component>
 </project>

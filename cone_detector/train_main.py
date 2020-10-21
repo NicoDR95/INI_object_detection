@@ -11,6 +11,9 @@ from datahandling.DataAugmentation import DataAugmentation
 from datahandling.DataPreprocessing import DataPreprocessing
 from datahandling.Dataset import Dataset
 from networks.TinyYoloOnProteinsQuantized import TinyYoloOnProteinsQuantized
+from networks.TinyYoloOnProteinsQuantizedPruned import TinyYoloOnProteinsQuantizedPruned
+from networks.TinyYoloOnProteinsQuantizedPruned8Bit import TinyYoloOnProteinsQuantizedPruned8Bit
+
 from networks.TinyYoloOnProteins import TinyYoloOnProteins
 from networks.TinyYoloOnProteinsSparsityAnn import TinyYoloOnProteinsSparsityAnn
 from networks.TinyYoloOnProteinsQuantizedSparsityAnn import TinyYoloOnProteinsQuantizedSparsityAnn
@@ -27,8 +30,8 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger()
 
 # ~~~~~~~~~ Directories for training ~~~~~~~~~
-run_name = 'ProteinsQuantizedSparsityAnnSGD'
-run_index = 3
+run_name = 'ProteinsQuantizedPruned8BitNewAlg'
+run_index = 1
 
 ws_root = r"C:/workspace/synthara/freelancer/INI_object_detection-master/"
 data_root = ws_root + "dataset/cones_dataset2018/"
@@ -113,17 +116,17 @@ augmentation_mode = False
 anchors_mode = False
 
 # ~~~~~~~~~ Training settings ~~~~~~~~~
-optimizer = "SGD" # Adam or SGD
+optimizer = "Adam" # Adam or SGD
 momentum_for_sgd = 0.9
 # Pruning Settings
 enable_pruning = True
-pruning_begin_step = 10 # A step is a batch
-pruning_end_step = 1000000
+pruning_begin_step = 1003 # A step is a batch, start after first epoch (with batch 16 1002 batches for an epoch)
+pruning_end_step = 35000 # 35 epochs
 pruning_incr_frequency = 100
 pruning_initial_sparsity = 0.0
-pruning_final_sparsity = 0.5
+pruning_final_sparsity = 0.74
 
-sparsity_ann_flag = True
+sparsity_ann_flag = False
 save_as_graphdef = False
 visualize_dataset = False
 visualize_preprocessed_images = False
@@ -158,8 +161,8 @@ data_preprocessing_normalize = 256.0
 tf_device = "/gpu:0"
 debug = True
 print_sel_p = False
-# learning_rate = 10 ** (-5)
-learning_rate = 10 ** (-4)
+learning_rate = 10 ** (-5)
+# learning_rate = 10 ** (-4)
 dropout = [0.0]
 
 # ~~~~~~~~~ Inference and accuracy settings ~~~~~~~~~
@@ -224,7 +227,7 @@ max_iter = 1000  # Maximum number of iterations of the k-means algorithm for a s
 # ~~~~~~~~~ Class settings ~~~~~~~~~
 parameters_type = Parameters
 dataset_parser_type = Dataset
-network_type = TinyYoloOnProteinsQuantizedSparsityAnn
+network_type = TinyYoloOnProteinsQuantizedPruned8Bit
 data_preprocessor_type = DataPreprocessing
 batch_generator_type = BatchGenerator
 loss_type = YoloLossCrossEntropyProb
@@ -308,11 +311,11 @@ if __name__ == "__main__":
                                            optimizer=optimizer,
                                            momentum=momentum_for_sgd,
                                            enable_pruning=enable_pruning,
-                                           initial_sparsity=pruning_initial_sparsity,
-                                           final_sparsity=pruning_final_sparsity,
-                                           begin_step=pruning_begin_step,
-                                           end_step=pruning_end_step,
-                                           frequency=pruning_incr_frequency
+                                           pruning_initial_sparsity=pruning_initial_sparsity,
+                                           pruning_final_sparsity=pruning_final_sparsity,
+                                           pruning_begin_step=pruning_begin_step,
+                                           pruning_end_step=pruning_end_step,
+                                           pruning_incr_frequency=pruning_incr_frequency
                                            )
 
         train_dataset_parser = dataset_parser_type(parameters=train_parameters,
